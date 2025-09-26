@@ -1,93 +1,79 @@
-// Vercel serverless function
-module.exports = async (req, res) => {
-  // CORS 설정
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+// Vercel serverless function - minimal version
+export default function handler(req, res) {
+  try {
+    // CORS 설정
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return;
+    }
 
-  // 기본 HTML 응답
-  if (req.method === 'GET' && req.url === '/') {
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>RubberDog - YouTube to Blog</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
-            h1 { color: #333; text-align: center; }
-            .status { text-align: center; padding: 20px; background: #e8f5e8; border-radius: 5px; margin: 20px 0; }
-            .error { background: #ffe8e8; }
-            .nav { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
-            .btn { padding: 10px 20px; background: #007cba; color: white; text-decoration: none; border-radius: 5px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🐕 RubberDog</h1>
-            <p style="text-align: center; font-size: 18px;">YouTube to Blog Automation System</p>
-
-            <div class="status">
-                ✅ <strong>배포 성공!</strong><br>
-                서버가 Vercel에서 정상적으로 작동하고 있습니다.
-            </div>
-
-            <div class="nav">
-                <a href="/auth" class="btn">로그인/회원가입</a>
-                <a href="/app" class="btn">앱 시작하기</a>
-            </div>
-
-            <h3>🚀 기능들:</h3>
-            <ul>
-                <li>✅ YouTube 동영상 자막 자동 추출</li>
-                <li>✅ AI 기반 여행 블로그 자동 생성</li>
-                <li>✅ 멀티유저 인증 시스템</li>
-                <li>✅ MongoDB 클라우드 저장소</li>
-                <li>✅ 텍스트 압축으로 저장공간 70% 절약</li>
-            </ul>
-
-            <div style="text-align: center; margin-top: 30px; font-size: 14px; color: #666;">
-                Environment: ${process.env.NODE_ENV || 'development'}<br>
-                MongoDB: ${process.env.MONGODB_URI ? '연결됨' : '미설정'}<br>
-                API Keys: ${process.env.ANTHROPIC_API_KEY ? '설정됨' : '미설정'}
-            </div>
+    // 기본 HTML 응답
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>RubberDog - 배포 성공!</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #28a745; margin-bottom: 20px; }
+        .status { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .info { background: #e7f3ff; color: #004085; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .btn { display: inline-block; padding: 12px 24px; background: #007cba; color: white; text-decoration: none; border-radius: 5px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 배포 성공!</h1>
+        <div class="status">
+            ✅ RubberDog가 Vercel에서 정상적으로 작동하고 있습니다!
         </div>
-    </body>
-    </html>
-    `;
 
+        <h2>🐕 RubberDog</h2>
+        <p>YouTube to Blog 자동화 시스템</p>
+
+        <div class="info">
+            <strong>주요 기능:</strong><br>
+            • YouTube 자막 자동 추출<br>
+            • AI 블로그 자동 생성<br>
+            • 멀티유저 시스템<br>
+            • 클라우드 저장소
+        </div>
+
+        <p>환경: production | 시간: ${new Date().toLocaleString('ko-KR')}</p>
+
+        <div>
+            <a href="https://github.com/woontara/rubberDog" class="btn">GitHub</a>
+            <a href="/api/test" class="btn">API 테스트</a>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    if (req.url === '/api/test' || req.url.includes('api/test')) {
+      res.status(200).json({
+        success: true,
+        message: 'RubberDog API is working!',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        url: req.url,
+        method: req.method
+      });
+      return;
+    }
+
+    // 모든 경로에 대해 기본 HTML 응답
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(html);
-    return;
-  }
 
-  // API 상태 체크
-  if (req.method === 'GET' && req.url === '/api/status') {
-    res.status(200).json({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      mongodb: process.env.MONGODB_URI ? 'configured' : 'not configured',
-      apis: {
-        anthropic: process.env.ANTHROPIC_API_KEY ? 'configured' : 'not configured',
-        perplexity: process.env.PERPLEXITY_API_KEY ? 'configured' : 'not configured'
-      }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message
     });
-    return;
   }
-
-  // 기본 응답
-  res.status(200).json({
-    message: 'RubberDog API Server',
-    status: 'running',
-    path: req.url,
-    method: req.method
-  });
-};
+}
