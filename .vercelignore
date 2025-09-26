@@ -1,0 +1,37 @@
+# Vercel 배포시 제외할 파일들
+
+# 개발용 파일들
+user_data/
+*.md
+*.log
+
+# 시스템 파일들
+.DS_Store
+Thumbs.db
+
+# Git 관련
+.git/
+.gitignore
+
+# IDE 설정
+.vscode/
+.idea/
+
+# 환경 파일 (보안상 제외, Vercel 대시보드에서 직접 설정)
+.env
+.env.local
+.env.example
+
+# 불필요한 스크립트들
+deploy.bat
+*.bat
+
+# 테스트 파일들
+test/
+tests/
+*.test.js
+
+# 임시 파일들
+temp/
+tmp/
+.tmp/

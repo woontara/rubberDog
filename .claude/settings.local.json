@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(rubberdog init:*)",
+      "Bash(rubberdog:*)",
+      "Bash(dir)",
+      "Bash(systeminfo)",
+      "Bash(findstr:*)",
+      "Bash(where python)",
+      "Bash(npm run:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(dir:*)",
+      "Bash(start start_gui.bat:*)",
+      "Bash(taskkill:*)",
+      "Bash(tasklist)",
+      "WebFetch(domain:www.sketch.com)",
+      "Bash(vercel:*)",
+      "Bash(node server.js)",
+      "Bash(pip show:*)",
+      "Read(//c/Users/didwk/Desktop/여행기/**)",
+      "Bash(node:*)",
+      "Bash(claude update)",
+      "Bash(tasklist:*)",
+      "Bash(rm:*)",
+      "Bash(TASKKILL /F /IM node.exe)",
+      "Bash(npm start)",
+      "Bash(MONGODB_URI=\"\" npm start)",
+      "Bash(netstat:*)",
+      "Bash(TASKKILL /F /PID 25624)",
+      "Bash(npx kill-port:*)",
+      "Bash(npx vercel:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git reset:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
