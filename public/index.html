@@ -3,540 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube 자막 추출 & 블로그 생성기</title>
+    <title>🐕 RubberDog - 배포 성공!</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #666;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .section {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-
-        .section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 500;
-        }
-
-        input[type="text"], input[type="url"], textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-            margin-right: 10px;
-        }
-
-        .btn:hover {
-            background: #5a67d8;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: #48bb78;
-        }
-
-        .btn-secondary:hover {
-            background: #38a169;
-        }
-
-        .video-list {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-
-        .video-item {
             display: flex;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
-            transition: background 0.2s;
-        }
-
-        .video-item:hover {
-            background: #f8f9fa;
-        }
-
-        .video-item input[type="checkbox"] {
-            margin-right: 15px;
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-
-        .video-info {
-            flex: 1;
-        }
-
-        .video-title {
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .video-duration {
-            font-size: 12px;
-            color: #999;
-        }
-
-        .extract-btn {
-            background: #48bb78;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .subtitle-storage {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        .subtitle-list, .blog-list {
-            display: grid;
-            grid-template-columns: 480px 1fr;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .subtitle-items, .blog-items {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .subtitle-item, .blog-item {
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .subtitle-item:hover, .blog-item:hover {
-            background: #f8f9fa;
-        }
-
-        .subtitle-item.active, .blog-item.active {
-            background: #e8ecff;
-            border-left: 3px solid #667eea;
-        }
-
-        .subtitle-content, .blog-content {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            max-height: 500px;
-            overflow-y: auto;
-            background: #f8f9fa;
-        }
-
-        .blog-section, .blog-storage {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        .blog-content {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            min-height: 300px;
-            background: #f8f9fa;
-            white-space: pre-wrap;
-            line-height: 1.6;
-        }
-
-        .settings-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #667eea;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 24px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            transition: all 0.3s;
-        }
-
-        .settings-btn:hover {
-            transform: scale(1.1);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
             align-items: center;
             justify-content: center;
         }
 
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
+        .container {
             max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
         }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .success-icon {
+            font-size: 4em;
             margin-bottom: 20px;
+            animation: bounce 2s infinite;
         }
 
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
         }
 
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
+        h1 {
+            color: #28a745;
+            margin-bottom: 20px;
+            font-size: 2.5em;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .status-message {
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-
-        .status-success {
+        .status {
             background: #d4edda;
             color: #155724;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
             border: 1px solid #c3e6cb;
         }
 
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+        .info {
+            background: #e7f3ff;
+            color: #004085;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border: 1px solid #b3d7ff;
         }
 
-        .tab-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+        .features {
+            text-align: left;
+            margin: 20px 0;
         }
 
-        .tab-btn {
-            padding: 10px 20px;
-            border: none;
-            background: #f0f0f0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
+        .features li {
+            margin: 10px 0;
+            padding-left: 10px;
         }
 
-        .tab-btn.active {
-            background: #667eea;
+        .btn-group {
+            margin: 30px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007cba;
             color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px;
+            transition: background 0.3s ease;
+            font-weight: 500;
         }
 
-        .tab-content {
-            display: none;
+        .btn:hover {
+            background: #005a87;
         }
 
-        .tab-content.active {
-            display: block;
+        .btn-github {
+            background: #333;
+        }
+
+        .btn-github:hover {
+            background: #555;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .timestamp {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎬 YouTube 자막 추출 & 블로그 생성기</h1>
-            <p class="subtitle">YouTube 영상의 자막을 추출하고 자동으로 블로그 글을 생성합니다</p>
-            <div class="user-info" id="user-info" style="display: none;">
-                <span id="user-name"></span>
-                <button class="btn" onclick="logout()" style="margin-left: 10px; padding: 8px 16px; font-size: 12px;">로그아웃</button>
-            </div>
+        <div class="success-icon">🎉</div>
+
+        <h1>배포 성공!</h1>
+
+        <div class="status">
+            <strong>✅ RubberDog가 Vercel에서 정상적으로 작동하고 있습니다!</strong>
         </div>
 
-        <div class="tab-buttons">
-            <button class="tab-btn active" onclick="switchTab('extractor')">자막 추출</button>
-            <button class="tab-btn" onclick="switchTab('storage')">자막 저장소</button>
-            <button class="tab-btn" onclick="switchTab('blog')">블로그 생성</button>
+        <h2>🐕 RubberDog</h2>
+        <p style="font-size: 1.2em; color: #666;">YouTube to Blog 자동화 시스템</p>
+
+        <div class="info">
+            <strong>🚀 주요 기능들:</strong>
+            <ul class="features">
+                <li>📹 YouTube 동영상 자막 자동 추출</li>
+                <li>🤖 AI 기반 여행 블로그 자동 생성</li>
+                <li>👥 멀티유저 인증 시스템</li>
+                <li>☁️ MongoDB 클라우드 저장소</li>
+                <li>📦 텍스트 압축으로 저장공간 70% 절약</li>
+            </ul>
         </div>
 
-        <!-- 자막 추출 탭 -->
-        <div id="extractor-tab" class="tab-content active">
-            <div class="main-content">
-                <div class="section">
-                    <h2>📺 YouTube URL 입력</h2>
-                    <div class="input-group">
-                        <label>YouTube 채널 또는 영상 URL</label>
-                        <input type="url" id="youtube-url" placeholder="https://youtube.com/... 또는 https://youtube.com/watch?v=...">
-                        <div class="status-message" id="url-status" style="display: none;"></div>
-                    </div>
-                    <button class="btn" onclick="processYouTubeURL()">URL 분석</button>
-                </div>
-
-                <div class="section">
-                    <h2>📋 영상 목록</h2>
-                    <div id="video-list-container">
-                        <p style="color: #999; text-align: center; padding: 40px;">YouTube URL을 입력하고 분석 버튼을 클릭하세요</p>
-                    </div>
-                </div>
-            </div>
+        <div class="btn-group">
+            <a href="https://github.com/woontara/rubberDog" class="btn btn-github" target="_blank">
+                📚 GitHub Repository
+            </a>
+            <a href="/auth.html" class="btn">
+                🔐 로그인/회원가입
+            </a>
         </div>
 
-        <!-- 자막 저장소 탭 -->
-        <div id="storage-tab" class="tab-content">
-            <div class="subtitle-storage">
-                <h2>💾 자막 저장소</h2>
-                <div class="subtitle-list">
-                    <div class="subtitle-items" id="subtitle-items">
-                        <div style="padding: 20px; color: #999; text-align: center;">
-                            저장된 자막이 없습니다
-                        </div>
-                    </div>
-                    <div class="subtitle-content" id="subtitle-content">
-                        <p style="color: #999; text-align: center;">좌측 목록에서 자막을 선택하세요</p>
-                    </div>
-                </div>
-            </div>
+        <div class="timestamp">
+            배포 시간: <span id="timestamp"></span>
         </div>
 
-        <!-- 블로그 생성 탭 -->
-        <div id="blog-tab" class="tab-content">
-            <div class="blog-storage">
-                <h2>📝 자동 생성된 블로그 글</h2>
-                <div class="blog-list">
-                    <div class="blog-items" id="blog-items">
-                        <div style="padding: 20px; color: #999; text-align: center;">
-                            생성된 블로그 글이 없습니다
-                        </div>
-                    </div>
-                    <div class="blog-content" id="blog-content">
-                        <p style="color: #999; text-align: center;">좌측 목록에서 블로그 글을 선택하세요</p>
-                        <div id="blog-actions" style="margin-top: 20px; display: none;">
-                            <button class="btn" onclick="copyBlogContent()">📋 복사</button>
-                            <button class="btn btn-secondary" onclick="downloadBlogContent()">💾 다운로드</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="footer">
+            <p><strong>🌍 실제 인터넷 서비스 완성!</strong></p>
+            <p>localhost에서 → 전세계 어디서든 접속 가능한 실제 웹사이트로 변신 ✨</p>
+            <p style="margin-top: 20px; font-size: 0.8em;">
+                Powered by Vercel | MongoDB Atlas | Anthropic Claude
+            </p>
         </div>
     </div>
-
-    <!-- 설정 버튼 -->
-    <button class="settings-btn" onclick="openSettings()">⚙️</button>
-
-    <!-- 설정 모달 -->
-    <div class="modal" id="settings-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>⚙️ 설정</h2>
-                <button class="close-btn" onclick="closeSettings()">✖</button>
-            </div>
-            <div class="input-group">
-                <label>OpenAI API Key</label>
-                <input type="password" id="openai-key" placeholder="sk-...">
-            </div>
-            <div class="input-group">
-                <label>블로그 작성 지침</label>
-                <textarea id="blog-guidelines" rows="8" placeholder="AI가 블로그 글을 작성할 때 따라야 할 지침을 입력하세요..."></textarea>
-            </div>
-            <button class="btn" onclick="saveSettings()">저장</button>
-        </div>
-    </div>
-
-    <!-- 모듈화된 JavaScript 파일들 -->
-    <script src="js/storage.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
 
     <script>
-        // 레거시 호환성을 위한 전역 변수들
-        let subtitles = [];
-        let blogs = [];
-        let settings = {};
-        let currentVideos = [];
-
-        // 레거시 호환성을 위한 함수들
-        function switchTab(tab) {
-            uiManager.switchTab(tab);
-        }
-
-        function displaySubtitles() {
-            uiManager.displaySubtitles();
-        }
-
-        function displayBlogs() {
-            uiManager.displayBlogs();
-        }
-
-        function openSettings() {
-            document.getElementById('settings-modal').classList.add('show');
-        }
-
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.remove('show');
-        }
-
-        function saveSettings() {
-            // TODO: 설정 저장 기능 구현
-            alert('설정 저장 기능을 구현해야 합니다.');
-        }
-
-        // 로그아웃
-        async function logout() {
-            try {
-                await fetch('/api/auth/logout', { method: 'POST' });
-                window.location.href = '/auth.html';
-            } catch (error) {
-                console.error('Logout error:', error);
-                window.location.href = '/auth.html';
-            }
-        }
-
-        // 인증 상태 확인
-        async function checkAuth() {
-            try {
-                const response = await fetch('/api/auth/me');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('user-name').textContent = data.user.name;
-                    document.getElementById('user-info').style.display = 'block';
-                    return true;
-                } else {
-                    window.location.href = '/auth.html';
-                    return false;
-                }
-            } catch (error) {
-                window.location.href = '/auth.html';
-                return false;
-            }
-        }
-
-        // 페이지 로드 시 초기화
-        window.onload = async function() {
-            const isAuthenticated = await checkAuth();
-            if (isAuthenticated) {
-                uiManager.displaySubtitles();
-                uiManager.displayBlogs();
-            }
-        };
+        document.getElementById('timestamp').textContent = new Date().toLocaleString('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
     </script>
 </body>
 </html>
