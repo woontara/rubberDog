@@ -486,6 +486,8 @@
             // 비디오 목록 표시
             if (data.videos && data.videos.length > 0) {
                 currentVideos = data.videos;
+                console.log(`🎬 받은 영상 수: ${data.videos.length}개`);
+                console.log('🔍 영상 목록:', data.videos.map(v => v.title).slice(0, 5));
                 applyFilters(); // 필터 적용하여 화면 업데이트
             } else {
                 videoList.innerHTML = '<div class="empty-state"><h3>😔</h3><p>동영상을 찾을 수 없습니다.</p></div>';
@@ -530,11 +532,15 @@
             // 결과 표시
             videoList.innerHTML = '';
 
+            console.log(`🔍 필터링 전: ${currentVideos.length}개 → 필터링 후: ${filteredVideos.length}개`);
+            console.log(`📊 필터 설정: 자막=${filterSubtitles}, 2분이상=${filterDuration}, 여행=${filterTravel}`);
+
             if (filteredVideos.length > 0) {
                 filteredVideos.forEach(video => {
                     const videoItem = createVideoItem(video);
                     videoList.appendChild(videoItem);
                 });
+                console.log(`✅ ${filteredVideos.length}개 영상 DOM에 추가 완료`);
             } else {
                 videoList.innerHTML = '<div class="empty-state"><h3>🔍</h3><p>필터 조건에 맞는 동영상이 없습니다.<br>필터 옵션을 조정해보세요.</p></div>';
             }
