@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/youtube/subtitle.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/youtube/subtitle_simple.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "routes": [
     {
       "src": "/api/youtube/subtitle",
@@ -16,6 +8,5 @@
       "src": "/api/youtube/subtitle-simple",
       "dest": "/api/youtube/subtitle_simple.js"
     }
-  ],
-  "public": true
+  ]
 }
