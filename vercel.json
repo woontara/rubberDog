@@ -1,14 +1,12 @@
 {
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/youtube/subtitle.js": {
+      "runtime": "nodejs18.x"
     },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
+    "api/youtube/subtitle_simple.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/youtube/subtitle",
@@ -17,10 +15,7 @@
     {
       "src": "/api/youtube/subtitle-simple",
       "dest": "/api/youtube/subtitle_simple.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
     }
-  ]
+  ],
+  "public": true
 }
