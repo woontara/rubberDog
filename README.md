@@ -36,22 +36,45 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-### 3. 의존성 설치 (Install Dependencies)
+### 3. Node.js 의존성 설치 (Install Node.js Dependencies)
 ```bash
-pip install -r requirements.txt
-pip install -e .
+npm install
 ```
 
-### 4. 설정 초기화 (Initialize Configuration)
+### 4. Python 의존성 설치 (Install Python Dependencies)
 ```bash
-rubberdog init
+pip install -r requirements.txt
+pip install -r requirements-youtube.txt
+pip install -e .
 ```
 
 ## 설정 (Configuration)
 
-초기화 후 `config.yaml` 파일을 편집하여 API 키와 설정을 입력하세요.
+### 환경변수 설정 (Environment Variables Setup)
 
-Edit the `config.yaml` file after initialization to add your API keys and settings.
+보안을 위해 API 키들은 환경변수로 관리됩니다.
+
+For security, API keys are managed through environment variables.
+
+1. `.env.example` 파일을 `.env`로 복사 (Copy `.env.example` to `.env`)
+```bash
+cp .env.example .env
+```
+
+2. `.env` 파일을 편집하여 실제 API 키 입력 (Edit `.env` file with your actual API keys)
+```bash
+# 필수 API 키들 (Required API Keys)
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+YOUTUBE_API_KEY_PRIMARY=your_primary_youtube_api_key_here
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+
+# 선택사항 API 키들 (Optional API Keys)
+YOUTUBE_API_KEY_BACKUP=your_backup_youtube_api_key_here
+PERPLEXITY_API_KEY=your_perplexity_api_key_here
+UNSPLASH_API_KEY=your_unsplash_api_key_here
+```
+
+3. 서버 재시작 (Restart server after setting environment variables)
 
 ### 필수 API 키 (Required API Keys)
 
@@ -59,31 +82,48 @@ Edit the `config.yaml` file after initialization to add your API keys and settin
 2. **OpenAI API** 또는 **Anthropic Claude API** - AI 글 생성용
 3. **Unsplash API** (선택사항) - 이미지 자동 선택용
 
-### 설정 예시 (Configuration Example)
+### API 키 획득 방법 (How to Get API Keys)
 
-```yaml
-youtube:
-  api_key: "YOUR_YOUTUBE_API_KEY"
-  max_channels_per_run: 5
-  max_videos_per_channel: 50
+1. **YouTube Data API v3**
+   - [Google Cloud Console](https://console.cloud.google.com/) 방문
+   - 새 프로젝트 생성 후 YouTube Data API v3 활성화
+   - API 키 생성 (Create credentials → API key)
 
-ai:
-  provider: "openai"  # or "anthropic"
-  api_key: "YOUR_AI_API_KEY"
-  model: "gpt-3.5-turbo"
+2. **Anthropic Claude API**
+   - [Anthropic Console](https://console.anthropic.com/) 방문
+   - API 키 생성 및 복사
 
-unsplash:
-  access_key: "YOUR_UNSPLASH_ACCESS_KEY"
+3. **MongoDB Atlas** (다중 사용자 지원용)
+   - [MongoDB Atlas](https://www.mongodb.com/atlas) 방문
+   - 무료 클러스터 생성 후 연결 문자열 복사
 
-scheduler:
-  enabled: true
-  runs_per_day: 3
-  schedule_times: ["09:00", "14:00", "20:00"]
-```
+4. **기타 선택사항 API** (Optional)
+   - **Unsplash**: [Unsplash Developers](https://unsplash.com/developers)
+   - **Perplexity**: [Perplexity API](https://www.perplexity.ai/)
 
 ## 사용법 (Usage)
 
-### 기본 명령어 (Basic Commands)
+### 웹 서버 시작 (Start Web Server)
+
+```bash
+# 개발 서버 시작 (Development)
+npm run dev
+
+# 또는 프로덕션 서버 시작 (Production)
+npm start
+
+# 서버가 http://localhost:3001에서 실행됩니다
+# The server will run at http://localhost:3001
+```
+
+### 웹 인터페이스 기능 (Web Interface Features)
+
+- **YouTube 분석**: YouTube URL 입력하여 채널/비디오 분석
+- **블로그 생성**: AI를 이용한 자동 여행 블로그 생성
+- **사용자 관리**: 다중 사용자 지원 및 개인 API 키 관리
+- **저장소 관리**: 생성된 콘텐츠 저장 및 관리
+
+### 기본 명령어 (Command Line Interface)
 
 ```bash
 # 채널 자동 탐색

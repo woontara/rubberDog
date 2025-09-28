@@ -10,6 +10,7 @@ import sys
 import json
 import re
 import io
+import os
 from urllib.parse import urlparse, parse_qs
 
 # UTF-8 인코딩 설정
@@ -19,12 +20,32 @@ from rubberdog.youtube.collector import YouTubeCollector
 from rubberdog.youtube.subtitle_extractor import SubtitleExtractor
 from youtube_transcript_api import YouTubeTranscriptApi
 
-# YouTube API Keys - 할당량 초과 시 순서대로 사용
-YOUTUBE_API_KEYS = [
-    "AIzaSyCnMUpWAknDlpMfNHAG70WM3V-6AYHyEkQ",  # Primary key
-    "AIzaSyBIvkcIbw64_AC3yDMfFBTUOS760vnqO8M",  # Backup key
-    "AIzaSyB49iUjspULCm8OqXGTMcxqedqKQbOFGo8"   # Additional key
-]
+# YouTube API Keys - 환경변수에서 읽어옴
+def get_youtube_api_keys():
+    """환경변수에서 YouTube API 키들을 읽어옴"""
+    keys = []
+
+    # 개별 환경변수에서 읽기
+    if os.getenv('YOUTUBE_API_KEY_PRIMARY'):
+        keys.append(os.getenv('YOUTUBE_API_KEY_PRIMARY'))
+    if os.getenv('YOUTUBE_API_KEY_BACKUP'):
+        keys.append(os.getenv('YOUTUBE_API_KEY_BACKUP'))
+    if os.getenv('YOUTUBE_API_KEY_ADDITIONAL'):
+        keys.append(os.getenv('YOUTUBE_API_KEY_ADDITIONAL'))
+
+    # 단일 환경변수에서 쉼표로 구분된 키들 읽기 (fallback)
+    if not keys and os.getenv('YOUTUBE_API_KEYS'):
+        keys = [key.strip() for key in os.getenv('YOUTUBE_API_KEYS').split(',')]
+
+    if not keys:
+        print("ERROR: No YouTube API keys found in environment variables", file=sys.stderr)
+        print("Please set YOUTUBE_API_KEY_PRIMARY, YOUTUBE_API_KEY_BACKUP, YOUTUBE_API_KEY_ADDITIONAL", file=sys.stderr)
+        print("Or set YOUTUBE_API_KEYS with comma-separated values", file=sys.stderr)
+        sys.exit(1)
+
+    return keys
+
+YOUTUBE_API_KEYS = get_youtube_api_keys()
 
 # 현재 사용 중인 키 인덱스
 current_key_index = 2

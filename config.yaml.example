@@ -1,0 +1,46 @@
+{
+  "youtube": {
+    "api_key": "YOUR_YOUTUBE_API_KEY_HERE",
+    "max_channels_per_run": 5,
+    "max_videos_per_channel": 50
+  },
+  "ai": {
+    "provider": "anthropic",
+    "api_key": "YOUR_ANTHROPIC_API_KEY_HERE",
+    "model": "claude-3-sonnet-20240229"
+  },
+  "unsplash": {
+    "access_key": ""
+  },
+  "database": {
+    "path": "rubberdog.db"
+  },
+  "scheduler": {
+    "enabled": true,
+    "runs_per_day": 3,
+    "schedule_times": [
+      "09:00",
+      "14:00",
+      "20:00"
+    ]
+  },
+  "blog": {
+    "sections": {
+      "destination_intro": true,
+      "itinerary": true,
+      "travel_tips": true,
+      "budget_info": false,
+      "local_food": false,
+      "transportation": false,
+      "accommodation": false
+    }
+  },
+  "notifications": {
+    "email_enabled": false,
+    "email_address": "",
+    "smtp_server": "",
+    "smtp_port": 587,
+    "smtp_username": "",
+    "smtp_password": ""
+  }
+}
