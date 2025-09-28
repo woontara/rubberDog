@@ -44,15 +44,31 @@
 
         .main-layout {
             display: grid;
-            grid-template-columns: 400px 1fr;
-            gap: 30px;
+            grid-template-columns: 350px 1fr 1fr;
+            gap: 25px;
             height: calc(100vh - 200px);
+        }
+
+        @media (max-width: 1400px) {
+            .main-layout {
+                grid-template-columns: 350px 1fr;
+                gap: 25px;
+            }
+            #subtitle-panel {
+                grid-column: 1 / -1;
+                margin-top: 25px;
+            }
         }
 
         @media (max-width: 1024px) {
             .main-layout {
                 grid-template-columns: 1fr;
                 height: auto;
+                gap: 20px;
+            }
+            #subtitle-panel {
+                grid-column: 1;
+                margin-top: 20px;
             }
         }
 
@@ -206,6 +222,51 @@
             height: 14px;
         }
 
+        .subtitle-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .subtitle-item {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            background-color: #f8f9fa;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+
+        .subtitle-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .subtitle-video-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .subtitle-text {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .subtitle-status {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
         .channel-info {
             display: flex;
             align-items: center;
@@ -349,6 +410,29 @@
             border-color: #ccc;
         }
 
+        .btn-extract {
+            padding: 4px 10px;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+        }
+
+        .btn-extract:hover:not(:disabled) {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .btn-extract:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         .selection-info {
             font-size: 0.85em;
             color: #666;
@@ -442,6 +526,7 @@
                             <div class="selection-buttons">
                                 <button class="btn-select" onclick="toggleAllVideos(true)">전체 선택</button>
                                 <button class="btn-select" onclick="toggleAllVideos(false)">전체 해제</button>
+                                <button class="btn-extract" onclick="extractSubtitles()" id="extract-btn" disabled>자막추출</button>
                             </div>
                             <div class="selection-info" id="selection-info">선택된 동영상: 0개</div>
                         </div>
@@ -467,6 +552,24 @@
                     <div class="empty-state">
                         <h3>🎬</h3>
                         <p>YouTube URL을 입력하고<br>동영상 목록을 가져와보세요!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 자막 목록 패널 -->
+            <div id="subtitle-panel" class="results-panel" style="display: none;">
+                <div class="results-header">
+                    <h3>자막 목록</h3>
+                    <div class="subtitle-controls">
+                        <button class="btn-select" onclick="clearSubtitles()">목록 지우기</button>
+                        <button class="btn-select" onclick="downloadSubtitles()">다운로드</button>
+                    </div>
+                </div>
+
+                <div id="subtitle-list" class="video-list">
+                    <div class="empty-state">
+                        <h3>📝</h3>
+                        <p>동영상을 선택하고 '자막추출'을<br>클릭하여 자막을 추출해보세요!</p>
                     </div>
                 </div>
             </div>
@@ -716,9 +819,17 @@
         // 선택 정보 업데이트
         function updateSelectionInfo() {
             const selectionInfo = document.getElementById('selection-info');
+            const extractBtn = document.getElementById('extract-btn');
+
             if (selectionInfo) {
                 selectionInfo.textContent = `선택된 동영상: ${selectedVideos.length}개`;
             }
+
+            // 자막추출 버튼 활성화/비활성화
+            if (extractBtn) {
+                extractBtn.disabled = selectedVideos.length === 0;
+            }
+
             console.log('Selected videos:', selectedVideos.length);
             showStatus(`선택된 동영상: ${selectedVideos.length}개`, selectedVideos.length > 0 ? 'success' : 'info');
         }
@@ -749,6 +860,151 @@
             }
 
             updateSelectionInfo();
+        }
+
+        // 자막 데이터 저장
+        let extractedSubtitles = [];
+
+        // 자막 추출 함수
+        async function extractSubtitles() {
+            if (selectedVideos.length === 0) {
+                showStatus('선택된 동영상이 없습니다.', 'error');
+                return;
+            }
+
+            const extractBtn = document.getElementById('extract-btn');
+            const originalText = extractBtn.textContent;
+            extractBtn.disabled = true;
+            extractBtn.textContent = '추출 중...';
+
+            showStatus(`${selectedVideos.length}개 동영상의 자막을 추출하고 있습니다...`, 'info');
+
+            try {
+                for (let i = 0; i < selectedVideos.length; i++) {
+                    const video = selectedVideos[i];
+                    extractBtn.textContent = `추출 중... (${i + 1}/${selectedVideos.length})`;
+
+                    try {
+                        const response = await fetch('/api/youtube/subtitle', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                videoId: video.id,
+                                title: video.title
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success && data.subtitle) {
+                            // 자막 데이터 저장
+                            const subtitleData = {
+                                videoId: video.id,
+                                title: video.title,
+                                subtitle: data.subtitle,
+                                timestamp: new Date().toISOString()
+                            };
+
+                            // 기존 자막 제거 (중복 방지)
+                            extractedSubtitles = extractedSubtitles.filter(item => item.videoId !== video.id);
+                            extractedSubtitles.push(subtitleData);
+
+                            console.log(`✅ 자막 추출 성공: ${video.title}`);
+                        } else {
+                            console.log(`❌ 자막 추출 실패: ${video.title} - ${data.error || '자막을 찾을 수 없습니다'}`);
+                        }
+                    } catch (error) {
+                        console.error(`❌ 자막 추출 오류: ${video.title}`, error);
+                    }
+                }
+
+                // 자막 목록 업데이트
+                displaySubtitles();
+                showStatus(`자막 추출 완료: ${extractedSubtitles.length}개`, 'success');
+
+            } catch (error) {
+                console.error('자막 추출 중 오류:', error);
+                showStatus('자막 추출 중 오류가 발생했습니다.', 'error');
+            } finally {
+                extractBtn.disabled = false;
+                extractBtn.textContent = originalText;
+            }
+        }
+
+        // 자막 목록 표시
+        function displaySubtitles() {
+            const subtitlePanel = document.getElementById('subtitle-panel');
+            const subtitleList = document.getElementById('subtitle-list');
+
+            if (extractedSubtitles.length === 0) {
+                subtitlePanel.style.display = 'none';
+                return;
+            }
+
+            subtitlePanel.style.display = 'block';
+            subtitleList.innerHTML = '';
+
+            extractedSubtitles.forEach(item => {
+                const subtitleItem = document.createElement('div');
+                subtitleItem.className = 'subtitle-item';
+
+                subtitleItem.innerHTML = `
+                    <div class="subtitle-video-title">${item.title}</div>
+                    <div class="subtitle-text">${item.subtitle}</div>
+                    <div class="subtitle-status">추출 시간: ${new Date(item.timestamp).toLocaleString('ko-KR')}</div>
+                `;
+
+                subtitleList.appendChild(subtitleItem);
+            });
+        }
+
+        // 자막 목록 지우기
+        function clearSubtitles() {
+            if (extractedSubtitles.length === 0) {
+                showStatus('지울 자막이 없습니다.', 'info');
+                return;
+            }
+
+            if (confirm('모든 자막을 지우시겠습니까?')) {
+                extractedSubtitles = [];
+                document.getElementById('subtitle-panel').style.display = 'none';
+                showStatus('자막 목록을 지웠습니다.', 'info');
+            }
+        }
+
+        // 자막 다운로드
+        function downloadSubtitles() {
+            if (extractedSubtitles.length === 0) {
+                showStatus('다운로드할 자막이 없습니다.', 'info');
+                return;
+            }
+
+            try {
+                let content = '';
+                extractedSubtitles.forEach((item, index) => {
+                    content += `=== ${item.title} ===\n`;
+                    content += `추출 시간: ${new Date(item.timestamp).toLocaleString('ko-KR')}\n\n`;
+                    content += item.subtitle;
+                    content += '\n\n' + '='.repeat(50) + '\n\n';
+                });
+
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `자막목록_${new Date().toISOString().slice(0, 10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showStatus('자막 파일을 다운로드했습니다.', 'success');
+            } catch (error) {
+                console.error('다운로드 오류:', error);
+                showStatus('다운로드 중 오류가 발생했습니다.', 'error');
+            }
         }
 
         // 숫자 포맷팅
