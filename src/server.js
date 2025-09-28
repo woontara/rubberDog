@@ -367,7 +367,9 @@ async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callbac
       const result = await analyzeYouTube(urlOrId, apiKeys, filters);
       callback(null, result);
     } else if (action === 'subtitle') {
-      callback('자막 추출 기능은 아직 구현되지 않았습니다.', null);
+      console.log('Starting YouTube subtitle extraction for:', urlOrId);
+      const result = await extractSubtitle(urlOrId);
+      callback(null, result);
     } else {
       callback('지원하지 않는 액션입니다.', null);
     }
@@ -375,6 +377,78 @@ async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callbac
     console.error('YouTube API Error:', error);
     callback(error.message, null);
   }
+}
+
+// 자막 추출 함수
+async function extractSubtitle(videoId) {
+  return new Promise((resolve, reject) => {
+    console.log('🎬 자막 추출 시작:', videoId);
+
+    // Python 스크립트 실행
+    const pythonProcess = spawn('python', ['youtube_subtitle_real.py', 'subtitle', videoId], {
+      encoding: 'utf8'
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString('utf8');
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString('utf8');
+    });
+
+    pythonProcess.on('close', (code) => {
+      console.log(`🐍 Python 스크립트 종료. 코드: ${code}`);
+
+      if (code !== 0) {
+        console.error('Python 스크립트 오류:', stderr);
+        resolve({
+          success: false,
+          error: `자막 추출 실패: ${stderr || 'Unknown error'}`
+        });
+        return;
+      }
+
+      try {
+        const result = JSON.parse(stdout);
+        console.log('📝 자막 추출 결과:', result.subtitle ? '성공' : '실패');
+
+        if (result.error) {
+          resolve({
+            success: false,
+            error: result.error
+          });
+        } else {
+          resolve({
+            success: true,
+            subtitle: result.subtitle,
+            language: result.language,
+            language_code: result.language_code,
+            is_generated: result.is_generated,
+            video_id: result.video_id
+          });
+        }
+      } catch (parseError) {
+        console.error('JSON 파싱 오류:', parseError);
+        console.error('Python 출력:', stdout);
+        resolve({
+          success: false,
+          error: `결과 파싱 실패: ${parseError.message}`
+        });
+      }
+    });
+
+    pythonProcess.on('error', (error) => {
+      console.error('Python 프로세스 오류:', error);
+      resolve({
+        success: false,
+        error: `Python 실행 실패: ${error.message}`
+      });
+    });
+  });
 }
 
 // 공통 Request Handler 함수
@@ -579,15 +653,13 @@ function handleApiRequest(req, res, pathname) {
         const data = JSON.parse(body);
         const { videoId } = data;
 
-        // 실제 YouTube API 호출
-        runYouTubeScript('subtitle', videoId, (error, result) => {
-          if (error) {
-            res.writeHead(500);
-            res.end(JSON.stringify({ error: error }));
-          } else {
-            res.writeHead(200);
-            res.end(JSON.stringify(result));
-          }
+        // 자막 추출 함수 호출
+        extractSubtitle(videoId).then(result => {
+          res.writeHead(200);
+          res.end(JSON.stringify(result));
+        }).catch(error => {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: error.message }));
         });
 
       } catch (e) {
