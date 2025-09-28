@@ -33,8 +33,8 @@ try {
   // 매니저 인스턴스 생성
   mongoUserManager = new MongoUserManager();
   mongoStorageManager = new MongoStorageManager();
-  fileUserManager = new FileUserManager();
-  fileStorageManager = new FileStorageManager();
+  fileUserManager = FileUserManager; // 이미 인스턴스로 export됨
+  fileStorageManager = FileStorageManager; // 이미 인스턴스로 export됨
 
   // 기본값으로 파일 기반 매니저 사용 (MongoDB 연결 실패 시 fallback)
   userManager = fileUserManager;
