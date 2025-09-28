@@ -20,12 +20,14 @@ async function extractSubtitleWithJS(videoId) {
       throw new Error('youtube-transcript 라이브러리가 설치되지 않음');
     }
 
-    // 시도할 언어 옵션들
+    // 시도할 언어 옵션들 (순서대로 시도)
     const languageOptions = [
-      { lang: 'ko', country: 'KR' },
-      { lang: 'ko' },
-      { lang: 'en' },
-      {}, // 기본 옵션
+      { lang: 'ko', country: 'KR' }, // 한국어 + 국가 코드
+      { lang: 'ko' },                // 한국어만
+      { lang: 'en' },                // 영어
+      { lang: 'ja' },                // 일본어
+      { lang: 'zh' },                // 중국어
+      {},                            // 기본 옵션 (자동 감지)
     ];
 
     let lastError = null;
@@ -71,10 +73,29 @@ async function extractSubtitleWithJS(videoId) {
 
   } catch (error) {
     console.error('API: JavaScript 자막 추출 실패:', error.message);
+
+    // 더 자세한 오류 분석
+    let errorCode = 'JS_EXTRACTION_FAILED';
+    let userMessage = 'JavaScript 자막 추출 실패';
+
+    if (error.message.includes('Transcript is disabled')) {
+      errorCode = 'TRANSCRIPT_DISABLED';
+      userMessage = '이 영상의 자막이 비활성화되어 있습니다';
+    } else if (error.message.includes('No transcripts found')) {
+      errorCode = 'NO_TRANSCRIPTS';
+      userMessage = '이 영상에 사용 가능한 자막이 없습니다';
+    } else if (error.message.includes('Video unavailable')) {
+      errorCode = 'VIDEO_UNAVAILABLE';
+      userMessage = '영상을 찾을 수 없습니다';
+    } else if (error.message.includes('Could not extract')) {
+      errorCode = 'EXTRACTION_ERROR';
+      userMessage = 'YouTube 보안 정책으로 인해 자막 추출이 제한되었습니다';
+    }
+
     return {
       success: false,
-      error: 'JS_EXTRACTION_FAILED',
-      message: `JavaScript 추출 실패: ${error.message}`,
+      error: errorCode,
+      message: `${userMessage}: ${error.message}`,
       video_id: videoId
     };
   }
