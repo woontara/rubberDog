@@ -113,52 +113,240 @@ const mimeTypes = {
 };
 
 
-// Helper function to run YouTube API scripts
-function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callback) {
-  const pythonPath = 'python';
-  // URL 분석은 기존 스크립트, 자막 추출은 새 스크립트 사용
-  const scriptPath = action === 'subtitle'
-    ? path.join(__dirname, '..', 'youtube_subtitle_real.py')
-    : path.join(__dirname, '..', 'youtube_api.py');
+// YouTube API Key 관리 함수
+function getYouTubeApiKeys() {
+  const keys = [];
 
-  // 인자 구성
-  const args = [scriptPath, action, urlOrId];
-
-  // 필터는 analyze 액션에서만 사용 (페이지 파라미터는 제거)
-  if (action === 'analyze') {
-    args.push('1'); // 항상 1로 고정 (Python 스크립트 호환성)
-    args.push(JSON.stringify(filters));
+  // 환경변수에서 API 키들 읽기
+  if (process.env.YOUTUBE_API_KEY_PRIMARY) {
+    keys.push(process.env.YOUTUBE_API_KEY_PRIMARY);
+  }
+  if (process.env.YOUTUBE_API_KEY_BACKUP) {
+    keys.push(process.env.YOUTUBE_API_KEY_BACKUP);
+  }
+  if (process.env.YOUTUBE_API_KEY_ADDITIONAL) {
+    keys.push(process.env.YOUTUBE_API_KEY_ADDITIONAL);
   }
 
-  const childProcess = spawn(pythonPath, args, {
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+  // 단일 환경변수에서 쉼표로 구분된 키들 읽기 (fallback)
+  if (keys.length === 0 && process.env.YOUTUBE_API_KEYS) {
+    keys.push(...process.env.YOUTUBE_API_KEYS.split(',').map(key => key.trim()));
+  }
+
+  return keys;
+}
+
+// YouTube URL에서 채널 ID나 비디오 ID 추출
+function parseYouTubeUrl(url) {
+  try {
+    const urlObj = new URL(url);
+
+    // 채널 URL 패턴들
+    if (urlObj.pathname.startsWith('/@')) {
+      return { type: 'channel', id: urlObj.pathname.slice(2) };
+    }
+    if (urlObj.pathname.startsWith('/c/')) {
+      return { type: 'channel', id: urlObj.pathname.slice(3) };
+    }
+    if (urlObj.pathname.startsWith('/channel/')) {
+      return { type: 'channel', id: urlObj.pathname.slice(9) };
+    }
+    if (urlObj.pathname.startsWith('/user/')) {
+      return { type: 'user', id: urlObj.pathname.slice(6) };
+    }
+
+    // 비디오 URL 패턴들
+    if (urlObj.hostname === 'youtu.be') {
+      return { type: 'video', id: urlObj.pathname.slice(1) };
+    }
+    if (urlObj.pathname === '/watch' && urlObj.searchParams.get('v')) {
+      return { type: 'video', id: urlObj.searchParams.get('v') };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('URL parsing error:', error);
+    return null;
+  }
+}
+
+// YouTube Data API 호출 함수
+async function callYouTubeAPI(endpoint, params, apiKey) {
+  const baseUrl = 'https://www.googleapis.com/youtube/v3';
+  const searchParams = new URLSearchParams({
+    ...params,
+    key: apiKey
   });
-  let output = '';
-  let error = '';
 
-  childProcess.stdout.setEncoding('utf8');
-  childProcess.stderr.setEncoding('utf8');
+  const response = await fetch(`${baseUrl}/${endpoint}?${searchParams}`);
 
-  childProcess.stdout.on('data', (data) => {
-    output += data;
-  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`YouTube API Error ${response.status}: ${errorData.error?.message || response.statusText}`);
+  }
 
-  childProcess.stderr.on('data', (data) => {
-    error += data;
-  });
+  return response.json();
+}
 
-  childProcess.on('close', (code) => {
+// YouTube 분석 함수
+async function analyzeYouTube(url, apiKeys, filters = {}) {
+  const parsed = parseYouTubeUrl(url);
+
+  if (!parsed) {
+    throw new Error('올바른 YouTube URL이 아닙니다.');
+  }
+
+  let apiKeyIndex = 0;
+  let lastError;
+
+  // API 키를 순차적으로 시도
+  for (const apiKey of apiKeys) {
     try {
-      const result = JSON.parse(output);
-      if (typeof callback === 'function') {
-        callback(null, result);
+      if (parsed.type === 'video') {
+        return await analyzeVideo(parsed.id, apiKey);
+      } else {
+        return await analyzeChannel(parsed.id, parsed.type, apiKey, filters);
       }
-    } catch (e) {
-      if (typeof callback === 'function') {
-        callback(error || 'Failed to parse JSON response', null);
+    } catch (error) {
+      lastError = error;
+      console.error(`API Key ${apiKeyIndex + 1} failed:`, error.message);
+      apiKeyIndex++;
+
+      // 할당량 초과나 인증 오류가 아닌 경우 즉시 중단
+      if (!error.message.includes('quota') && !error.message.includes('credentials')) {
+        throw error;
       }
     }
-  });
+  }
+
+  throw new Error(`모든 API 키가 실패했습니다. 마지막 오류: ${lastError?.message}`);
+}
+
+// 비디오 분석
+async function analyzeVideo(videoId, apiKey) {
+  const videoData = await callYouTubeAPI('videos', {
+    part: 'snippet,statistics',
+    id: videoId
+  }, apiKey);
+
+  if (videoData.items.length === 0) {
+    throw new Error('비디오를 찾을 수 없습니다.');
+  }
+
+  const video = videoData.items[0];
+  const snippet = video.snippet;
+  const stats = video.statistics;
+
+  return {
+    type: 'video',
+    videos: [{
+      id: videoId,
+      title: snippet.title,
+      description: snippet.description,
+      publishedAt: snippet.publishedAt,
+      thumbnail: snippet.thumbnails.maxres?.url || snippet.thumbnails.high?.url || snippet.thumbnails.medium?.url,
+      viewCount: parseInt(stats.viewCount || 0),
+      likeCount: parseInt(stats.likeCount || 0),
+      commentCount: parseInt(stats.commentCount || 0),
+      duration: 'N/A'
+    }],
+    channel: {
+      id: snippet.channelId,
+      title: snippet.channelTitle,
+      thumbnail: null
+    }
+  };
+}
+
+// 채널 분석
+async function analyzeChannel(channelIdentifier, identifierType, apiKey, filters = {}) {
+  let channelId;
+
+  if (identifierType === 'channel') {
+    channelId = channelIdentifier;
+  } else {
+    // 사용자명이나 커스텀 URL인 경우 채널 ID로 변환
+    const searchData = await callYouTubeAPI('search', {
+      part: 'snippet',
+      q: channelIdentifier,
+      type: 'channel',
+      maxResults: 1
+    }, apiKey);
+
+    if (searchData.items.length === 0) {
+      throw new Error('채널을 찾을 수 없습니다.');
+    }
+
+    channelId = searchData.items[0].snippet.channelId;
+  }
+
+  // 채널 정보 가져오기
+  const channelData = await callYouTubeAPI('channels', {
+    part: 'snippet,statistics',
+    id: channelId
+  }, apiKey);
+
+  if (channelData.items.length === 0) {
+    throw new Error('채널을 찾을 수 없습니다.');
+  }
+
+  const channel = channelData.items[0];
+
+  // 채널의 비디오 목록 가져오기
+  const videosData = await callYouTubeAPI('search', {
+    part: 'snippet',
+    channelId: channelId,
+    type: 'video',
+    order: 'date',
+    maxResults: 20
+  }, apiKey);
+
+  const videos = videosData.items.map(item => ({
+    id: item.id.videoId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    publishedAt: item.snippet.publishedAt,
+    thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+    viewCount: 0,
+    duration: 'N/A'
+  }));
+
+  return {
+    type: 'channel',
+    channel: {
+      id: channelId,
+      title: channel.snippet.title,
+      description: channel.snippet.description,
+      thumbnail: channel.snippet.thumbnails.medium?.url || channel.snippet.thumbnails.default?.url,
+      subscriberCount: parseInt(channel.statistics.subscriberCount || 0),
+      videoCount: parseInt(channel.statistics.videoCount || 0),
+      viewCount: parseInt(channel.statistics.viewCount || 0)
+    },
+    videos: videos
+  };
+}
+
+// Helper function to run YouTube API (JavaScript 버전)
+async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callback) {
+  try {
+    const apiKeys = getYouTubeApiKeys();
+
+    if (apiKeys.length === 0) {
+      throw new Error('YouTube API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.');
+    }
+
+    if (action === 'analyze') {
+      const result = await analyzeYouTube(urlOrId, apiKeys, filters);
+      callback(null, result);
+    } else if (action === 'subtitle') {
+      callback('자막 추출 기능은 아직 구현되지 않았습니다.', null);
+    } else {
+      callback('지원하지 않는 액션입니다.', null);
+    }
+  } catch (error) {
+    console.error('YouTube API Error:', error);
+    callback(error.message, null);
+  }
 }
 
 // 공통 Request Handler 함수
