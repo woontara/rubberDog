@@ -185,14 +185,43 @@ async function callYouTubeAPI(endpoint, params, apiKey) {
     key: apiKey
   });
 
-  const response = await fetch(`${baseUrl}/${endpoint}?${searchParams}`);
+  const apiUrl = `${baseUrl}/${endpoint}?${searchParams}`;
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`YouTube API Error ${response.status}: ${errorData.error?.message || response.statusText}`);
+  console.log(`🚀 Calling YouTube API: ${endpoint}`);
+  console.log(`📍 Full URL: ${baseUrl}/${endpoint}?${Object.keys(params).map(k => `${k}=${params[k]}`).join('&')}&key=[HIDDEN]`);
+  console.log(`🔑 API Key length: ${apiKey ? apiKey.length : 0}`);
+  console.log(`🔑 API Key starts with: ${apiKey ? apiKey.substring(0, 10) + '...' : 'null'}`);
+
+  try {
+    const response = await fetch(apiUrl);
+
+    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+    console.log(`📡 Response headers:`, Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error Response:`, errorText);
+
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: { message: errorText } };
+      }
+
+      const errorMsg = `YouTube API Error ${response.status}: ${errorData.error?.message || response.statusText}`;
+      console.error(`❌ Final error message:`, errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    const jsonData = await response.json();
+    console.log(`✅ API Success! Items count: ${jsonData.items ? jsonData.items.length : 0}`);
+    return jsonData;
+
+  } catch (error) {
+    console.error(`🚨 API Call Failed:`, error.message);
+    throw error;
   }
-
-  return response.json();
 }
 
 // YouTube 분석 함수
