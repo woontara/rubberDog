@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
     const channelInfo = await getChannelInfo(channelId, apiKeys[0]);
 
     // 채널의 동영상 목록 가져오기 (전체)
-    const videos = await getAllChannelVideos(channelId, apiKeys[0], channelInfo?.videoCount || 0);
+    const videos = await getAllChannelVideos(channelId, apiKeys[0], channelInfo?.videoCount || 1000);
 
     console.log('✅ 성공:', { channelTitle: channelInfo?.title, videoCount: videos?.length });
 
@@ -205,7 +205,8 @@ async function getAllChannelVideos(channelId, apiKey, totalVideoCount) {
     let allVideos = [];
     let nextPageToken = null;
     const maxPerPage = 50; // YouTube API 최대값
-    const maxTotalVideos = Math.min(totalVideoCount, 500); // 최대 500개로 제한 (API 할당량 고려)
+    // totalVideoCount가 0이거나 없으면 500개까지 시도
+    const maxTotalVideos = totalVideoCount > 0 ? Math.min(totalVideoCount, 500) : 500;
 
     console.log(`📊 채널 총 영상 수: ${totalVideoCount}, 가져올 영상 수: ${maxTotalVideos}`);
 
