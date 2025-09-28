@@ -5,21 +5,54 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const { spawn } = require('child_process');
+
+// Node.js 18+ 에서는 fetch가 내장, 그 이전 버전에서는 node-fetch 사용
+let fetch;
+try {
+  fetch = globalThis.fetch || require('node-fetch');
+} catch (error) {
+  console.warn('Fetch not available:', error.message);
+}
 // MongoDB 기반 매니저들 (우선 사용)
-const MongoUserManager = require('../models/mongo-user');
-const MongoStorageManager = require('../models/mongo-storage');
+let MongoUserManager, MongoStorageManager;
+let FileUserManager, FileStorageManager;
 
-// 기존 파일 기반 매니저들 (fallback용)
-const FileUserManager = require('../models/user');
-const FileStorageManager = require('../models/storage');
-
-// 매니저 인스턴스 생성
-const mongoUserManager = new MongoUserManager();
-const mongoStorageManager = new MongoStorageManager();
-
-let userManager = mongoUserManager;
-let userDataManager = mongoStorageManager;
+// 매니저 인스턴스 변수
+let mongoUserManager, mongoStorageManager;
+let fileUserManager, fileStorageManager;
+let userManager, userDataManager;
 let usingMongoDB = false;
+
+// 모듈 로딩 및 초기화 (에러 처리 포함)
+try {
+  MongoUserManager = require('../models/mongo-user');
+  MongoStorageManager = require('../models/mongo-storage');
+  FileUserManager = require('../models/user');
+  FileStorageManager = require('../models/storage');
+
+  // 매니저 인스턴스 생성
+  mongoUserManager = new MongoUserManager();
+  mongoStorageManager = new MongoStorageManager();
+  fileUserManager = new FileUserManager();
+  fileStorageManager = new FileStorageManager();
+
+  // 기본값으로 파일 기반 매니저 사용 (MongoDB 연결 실패 시 fallback)
+  userManager = fileUserManager;
+  userDataManager = fileStorageManager;
+} catch (error) {
+  console.error('Model loading error:', error);
+  // Fallback: 기본 객체들로 초기화
+  userManager = {
+    getUser: () => null,
+    createUser: () => false,
+    updateUser: () => false
+  };
+  userDataManager = {
+    saveData: () => false,
+    getData: () => null,
+    listData: () => []
+  };
+}
 
 
 // Default Claude API 키 (fallback only - 환경변수에서 가져옴)
