@@ -683,13 +683,26 @@ async function initializeDatabase() {
 
 const PORT = process.env.PORT || 3001;
 
-// 서버 시작
-async function startServer() {
-  // 데이터베이스 초기화
-  await initializeDatabase();
+// Vercel 환경 감지
+const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
 
-  // 세션 정리 시작
-  userManager.startSessionCleanup();
+// 데이터베이스 초기화 (한 번만 실행)
+let initialized = false;
+async function ensureInitialized() {
+  if (!initialized) {
+    await initializeDatabase();
+    if (userManager.startSessionCleanup) {
+      userManager.startSessionCleanup();
+    }
+    initialized = true;
+    console.log(`🚀 RubberDog initialized for ${isVercel ? 'Vercel' : 'Local'}`);
+    console.log(`👥 Multi-user support: ${usingMongoDB ? 'MongoDB Atlas' : 'Local Files'}`);
+  }
+}
+
+// 서버 시작 (로컬 환경용)
+async function startServer() {
+  await ensureInitialized();
 
   server.listen(PORT, () => {
     console.log(`🚀 Multi-user YouTube Blog Generator running on http://localhost:${PORT}`);
@@ -704,10 +717,21 @@ async function startServer() {
   });
 }
 
-// 서버 시작
-startServer().catch(error => {
-  console.error('❌ 서버 시작 실패:', error);
-  process.exit(1);
-});
+// Vercel Serverless Function 핸들러
+async function handler(req, res) {
+  await ensureInitialized();
+  return server(req, res);
+}
 
-module.exports = server;
+// 환경에 따른 실행
+if (isVercel) {
+  // Vercel 환경: handler export
+  module.exports = handler;
+} else {
+  // 로컬 환경: 서버 시작
+  startServer().catch(error => {
+    console.error('❌ 서버 시작 실패:', error);
+    process.exit(1);
+  });
+  module.exports = server;
+}
