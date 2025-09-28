@@ -37,8 +37,10 @@
       "Bash(git config:*)",
       "Bash(git reset:*)",
       "Bash(git commit:*)",
+      "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "WebFetch(domain:rubber-dog-a4vs.vercel.app)"
     ],
     "deny": [],
     "ask": []
