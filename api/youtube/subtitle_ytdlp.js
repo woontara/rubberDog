@@ -1,127 +1,175 @@
-// yt-dlp 통합 자막 추출 시스템
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(exec);
+// 강력한 JavaScript YouTube 자막 추출 API (ytdl-core + youtube-transcript)
+const ytdl = require('@distube/ytdl-core');
+const { YoutubeTranscript } = require('youtube-transcript');
 
-// yt-dlp를 사용한 자막 추출 함수
-async function extractSubtitleWithYtdlp(videoId, preferredLangs = ['ko', 'en']) {
-  console.log(`🎬 yt-dlp로 자막 추출 시작: ${videoId}`);
+// 다중 방법으로 자막 추출 시도
+async function extractSubtitleAdvanced(videoId) {
+  console.log('🔧 고급 자막 추출 시작:', videoId);
 
-  for (const lang of preferredLangs) {
-    try {
-      console.log(`🔄 ${lang} 언어로 시도 중...`);
+  // 방법 1: ytdl-core로 자막 정보 가져오기
+  try {
+    console.log('🎯 방법 1: ytdl-core로 자막 추출 시도');
 
-      // yt-dlp 명령어 구성
-      const command = [
-        'yt-dlp',
-        '--skip-download',           // 영상 다운로드 건너뛰기
-        '--write-auto-subs',         // 자동 생성 자막 포함
-        '--write-subs',              // 수동 자막 포함
-        '--sub-langs', lang,         // 언어 지정
-        '--convert-subs', 'srt',     // SRT 형식으로 변환
-        '--output', '%(title)s.%(ext)s',
-        '--print', 'subtitle:%(filepath)s',  // 자막 파일 경로 출력
-        `https://www.youtube.com/watch?v=${videoId}`
-      ].join(' ');
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const info = await ytdl.getInfo(videoUrl);
 
-      console.log(`📝 실행 명령어: ${command}`);
+    if (info.player_response && info.player_response.captions) {
+      const captions = info.player_response.captions.playerCaptionsTracklistRenderer;
 
-      const { stdout, stderr } = await execAsync(command, {
-        timeout: 30000,              // 30초 타임아웃
-        encoding: 'utf8'
-      });
+      if (captions && captions.captionTracks) {
+        console.log('✅ ytdl-core: 자막 트랙 발견:', captions.captionTracks.length);
 
-      console.log(`📊 stdout: ${stdout}`);
-      if (stderr) console.log(`⚠️ stderr: ${stderr}`);
+        // 한국어 자막 우선 검색
+        let captionTrack = captions.captionTracks.find(track =>
+          track.languageCode === 'ko' || track.languageCode === 'ko-KR'
+        );
 
-      // stdout에서 자막 내용 추출
-      if (stdout && stdout.trim()) {
-        console.log(`✅ yt-dlp로 ${lang} 자막 추출 성공!`);
+        // 한국어가 없으면 다른 언어
+        if (!captionTrack) {
+          captionTrack = captions.captionTracks[0];
+        }
 
-        return {
-          success: true,
-          subtitle: stdout.trim(),
-          language: lang === 'ko' ? 'Korean' : 'English',
-          language_code: lang,
-          is_generated: true,
-          video_id: videoId,
-          method: 'yt-dlp',
-          note: `yt-dlp를 사용하여 ${lang} 자막을 성공적으로 추출했습니다.`
-        };
+        if (captionTrack && captionTrack.baseUrl) {
+          console.log('🌐 자막 URL 발견:', captionTrack.languageCode);
+
+          // 자막 URL에서 직접 다운로드
+          const fetch = require('node-fetch');
+          const response = await fetch(captionTrack.baseUrl);
+          const xmlData = await response.text();
+
+          // XML 파싱 (간단한 방법)
+          const subtitleText = parseXMLSubtitles(xmlData);
+
+          if (subtitleText) {
+            return {
+              success: true,
+              subtitle: subtitleText,
+              language: captionTrack.name ? captionTrack.name.simpleText : 'Unknown',
+              language_code: captionTrack.languageCode,
+              is_generated: captionTrack.kind === 'asr',
+              video_id: videoId,
+              method: 'ytdl-core-direct'
+            };
+          }
+        }
       }
-
-    } catch (error) {
-      console.log(`❌ ${lang} 언어 yt-dlp 실패: ${error.message}`);
-
-      // 다음 언어로 계속 시도
-      continue;
     }
+  } catch (error) {
+    console.log('⚠️ ytdl-core 방법 실패:', error.message);
   }
 
-  // 모든 언어 시도 실패
+  // 방법 2: youtube-transcript 다중 언어 시도 (기존 방법)
+  try {
+    console.log('🎯 방법 2: youtube-transcript 다중 언어 시도');
+
+    const languageOptions = [
+      { lang: 'ko', country: 'KR' },
+      { lang: 'ko' },
+      { lang: 'en' },
+      { lang: 'ja' },
+      { lang: 'zh' },
+      { lang: 'es' },
+      { lang: 'fr' },
+      {}  // 기본 옵션
+    ];
+
+    for (const option of languageOptions) {
+      try {
+        console.log(`🌐 언어 옵션 시도: ${JSON.stringify(option)}`);
+
+        const transcript = await YoutubeTranscript.fetchTranscript(videoId, option);
+
+        if (transcript && transcript.length > 0) {
+          console.log('✅ youtube-transcript 성공:', transcript.length);
+
+          const formattedSubtitle = transcript.map(item => {
+            const minutes = Math.floor(item.offset / 60000);
+            const seconds = Math.floor((item.offset % 60000) / 1000);
+            const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+            return `${timeStr} ${item.text}`;
+          }).join('\n');
+
+          return {
+            success: true,
+            subtitle: formattedSubtitle,
+            language: option.lang || 'auto-detected',
+            language_code: option.lang || 'auto',
+            is_generated: true,
+            video_id: videoId,
+            method: 'youtube-transcript-multi',
+            language_option: JSON.stringify(option)
+          };
+        }
+      } catch (error) {
+        console.log(`⚠️ 언어 옵션 ${JSON.stringify(option)} 실패:`, error.message);
+        continue;
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ youtube-transcript 방법 실패:', error.message);
+  }
+
+  // 방법 3: ytdl-core로 비디오 정보만 가져와서 분석
+  try {
+    console.log('🎯 방법 3: ytdl-core 정보 분석');
+
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const basicInfo = await ytdl.getBasicInfo(videoUrl);
+
+    console.log('📊 비디오 정보:', {
+      title: basicInfo.videoDetails.title,
+      author: basicInfo.videoDetails.author.name,
+      lengthSeconds: basicInfo.videoDetails.lengthSeconds
+    });
+
+    // 추가 정보로 자막 가능성 체크
+    if (basicInfo.videoDetails && basicInfo.videoDetails.keywords) {
+      console.log('🏷️ 키워드:', basicInfo.videoDetails.keywords.slice(0, 5));
+    }
+
+  } catch (error) {
+    console.log('⚠️ ytdl-core 정보 분석 실패:', error.message);
+  }
+
+  // 모든 방법 실패
   return {
     success: false,
-    error: 'YTDLP_EXTRACTION_FAILED',
-    message: `yt-dlp로 자막 추출에 실패했습니다. 시도한 언어: ${preferredLangs.join(', ')}`,
-    attempted_languages: preferredLangs,
+    error: 'ALL_ADVANCED_METHODS_FAILED',
+    message: '모든 고급 추출 방법이 실패했습니다. 이 영상은 자막이 없거나 접근이 제한되어 있습니다.',
     video_id: videoId
   };
 }
 
-// 간단한 yt-dlp 자막 추출 (stdout 방식)
-async function extractSubtitleSimple(videoId, lang = 'en') {
-  console.log(`🔄 간단한 yt-dlp 자막 추출: ${videoId} (${lang})`);
-
+// XML 자막 파싱 함수
+function parseXMLSubtitles(xmlData) {
   try {
-    // 더 간단한 명령어로 시도
-    const command = `yt-dlp --skip-download --write-auto-subs --sub-langs ${lang} --convert-subs srt --print "%(subtitles.${lang}.0.url)s" "https://www.youtube.com/watch?v=${videoId}"`;
+    // 간단한 XML 파싱 (정규식 사용)
+    const textRegex = /<text[^>]*start="([^"]*)"[^>]*>(.*?)<\/text>/g;
+    const subtitles = [];
+    let match;
 
-    console.log(`📝 간단 명령어: ${command}`);
+    while ((match = textRegex.exec(xmlData)) !== null) {
+      const startTime = parseFloat(match[1]);
+      const text = match[2]
+        .replace(/<[^>]*>/g, '') // HTML 태그 제거
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .trim();
 
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: 20000,
-      encoding: 'utf8'
-    });
-
-    if (stdout && stdout.includes('http')) {
-      console.log(`✅ 자막 URL 획득: ${stdout.trim()}`);
-
-      // 자막 URL에서 내용 다운로드
-      const subtitleUrl = stdout.trim();
-      const downloadCmd = `curl -s "${subtitleUrl}"`;
-
-      const { stdout: subtitleContent } = await execAsync(downloadCmd, {
-        timeout: 10000,
-        encoding: 'utf8'
-      });
-
-      if (subtitleContent && subtitleContent.length > 50) {
-        console.log(`✅ 자막 내용 다운로드 성공!`);
-
-        return {
-          success: true,
-          subtitle: subtitleContent.trim(),
-          language: lang === 'ko' ? 'Korean' : 'English',
-          language_code: lang,
-          is_generated: true,
-          video_id: videoId,
-          method: 'yt-dlp-simple',
-          note: `yt-dlp URL 방식으로 ${lang} 자막을 성공적으로 추출했습니다.`
-        };
+      if (text) {
+        const minutes = Math.floor(startTime / 60);
+        const seconds = Math.floor(startTime % 60);
+        const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+        subtitles.push(`${timeStr} ${text}`);
       }
     }
 
-    throw new Error('자막 URL을 찾을 수 없습니다.');
-
+    return subtitles.length > 0 ? subtitles.join('\n') : null;
   } catch (error) {
-    console.log(`❌ 간단 yt-dlp 실패: ${error.message}`);
-
-    return {
-      success: false,
-      error: 'SIMPLE_YTDLP_FAILED',
-      message: `간단한 yt-dlp 방식으로 자막 추출에 실패했습니다: ${error.message}`,
-      video_id: videoId
-    };
+    console.error('XML 파싱 오류:', error);
+    return null;
   }
 }
 
@@ -143,33 +191,31 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { videoId } = req.body;
+    const { videoId, title } = req.body;
 
     if (!videoId) {
-      res.status(400).json({ error: 'videoId is required' });
+      res.status(400).json({
+        success: false,
+        error: 'MISSING_VIDEO_ID',
+        message: 'videoId is required'
+      });
       return;
     }
 
-    console.log(`🎬 yt-dlp 자막 추출 요청: ${videoId}`);
+    console.log('🚀 고급 자막 추출 요청:', { videoId, title });
 
-    // 1차 시도: 표준 yt-dlp 방식
-    let result = await extractSubtitleWithYtdlp(videoId, ['ko', 'en']);
-
-    if (!result.success) {
-      // 2차 시도: 간단한 URL 방식
-      console.log(`🔄 2차 시도: 간단한 방식...`);
-      result = await extractSubtitleSimple(videoId, 'en');
-    }
+    const result = await extractSubtitleAdvanced(videoId);
+    console.log(`✅ 고급 자막 추출 완료: ${videoId}`, result.success ? '성공' : '실패');
 
     res.status(200).json(result);
 
   } catch (error) {
-    console.error('yt-dlp 자막 추출 API 오류:', error);
+    console.error('❌ 고급 자막 추출 오류:', error);
     res.status(500).json({
       success: false,
       error: 'SERVER_ERROR',
-      message: `서버 오류가 발생했습니다: ${error.message}`,
-      detailed_error: error.message
+      message: error.message,
+      stack: error.stack
     });
   }
 };
