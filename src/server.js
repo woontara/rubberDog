@@ -379,10 +379,144 @@ async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callbac
   }
 }
 
-// 자막 추출 함수
+// YouTube 자막 추출 라이브러리 import
+const { YoutubeTranscript } = require('youtube-transcript');
+
+// YouTube URL에서 비디오 ID 추출하는 함수
+function extractVideoId(url) {
+  if (!url) return null;
+
+  // 이미 11자리 ID인 경우
+  if (url.length === 11 && !url.includes('/')) {
+    return url;
+  }
+
+  // YouTube URL 패턴들
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/.*[?&]v=([a-zA-Z0-9_-]{11})/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+// 자막 텍스트를 시간과 함께 포맷하는 함수
+function formatSubtitle(transcriptData) {
+  if (!transcriptData || !Array.isArray(transcriptData)) {
+    return '';
+  }
+
+  return transcriptData.map(entry => {
+    const startTime = Math.floor(entry.offset / 1000);
+    const minutes = Math.floor(startTime / 60);
+    const seconds = startTime % 60;
+    const timestamp = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+
+    return `${timestamp} ${entry.text.trim()}`;
+  }).join('\n');
+}
+
+// 자막 추출 함수 (Python 백업 + JavaScript)
 async function extractSubtitle(videoId) {
+  // Vercel 환경 감지
+  const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';
+
+  if (isVercel) {
+    // Vercel 환경에서는 JavaScript 사용
+    return await extractSubtitleWithJS(videoId);
+  } else {
+    // 로컬 환경에서는 Python 우선, 실패시 JavaScript
+    try {
+      return await extractSubtitleWithPython(videoId);
+    } catch (error) {
+      console.log('🔄 Python 실패, JavaScript로 전환...');
+      return await extractSubtitleWithJS(videoId);
+    }
+  }
+}
+
+// JavaScript 자막 추출
+async function extractSubtitleWithJS(videoId) {
+  try {
+    console.log('🎬 JavaScript로 자막 추출 시작:', videoId);
+
+    // 언어 옵션 (한국어 우선)
+    const languageOptions = [
+      { lang: 'ko' },
+      { lang: 'ko-KR' },
+      { lang: 'en' },
+      { lang: 'en-US' },
+      { lang: 'ja' },
+      {} // 언어 지정 없음
+    ];
+
+    let lastError = null;
+
+    // 각 언어 옵션을 시도
+    for (const langOption of languageOptions) {
+      try {
+        const langCode = langOption.lang || 'auto';
+        console.log(`🌐 ${langCode} 언어로 시도 중...`);
+
+        const transcriptData = await YoutubeTranscript.fetchTranscript(videoId, langOption);
+
+        if (transcriptData && transcriptData.length > 0) {
+          const formattedSubtitle = formatSubtitle(transcriptData);
+
+          console.log(`✅ 자막 추출 성공: ${langCode} (${transcriptData.length}개 세그먼트)`);
+
+          return {
+            success: true,
+            subtitle: formattedSubtitle,
+            language: langCode === 'auto' ? 'Auto-detected' : langCode,
+            language_code: langCode,
+            is_generated: false,
+            video_id: videoId,
+            segments_count: transcriptData.length,
+            method: 'youtube-transcript-js'
+          };
+        }
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ ${langOption.lang || 'auto'} 언어 실패: ${error.message}`);
+        continue;
+      }
+    }
+
+    // 모든 언어 시도 실패
+    const errorMessage = lastError?.message || 'Unknown error';
+    console.log(`❌ JavaScript 자막 추출 실패: ${videoId}`);
+
+    return {
+      success: false,
+      error: 'EXTRACTION_FAILED',
+      message: 'JavaScript 자막 추출에 실패했습니다.',
+      video_id: videoId,
+      detailed_error: errorMessage
+    };
+
+  } catch (error) {
+    console.error('❌ JavaScript 자막 추출 오류:', error);
+    return {
+      success: false,
+      error: 'JS_ERROR',
+      message: 'JavaScript 엔진 오류가 발생했습니다.',
+      detailed_error: error.message
+    };
+  }
+}
+
+// Python 자막 추출 (로컬 환경용)
+async function extractSubtitleWithPython(videoId) {
   return new Promise((resolve, reject) => {
-    console.log('🎬 자막 추출 시작:', videoId);
+    console.log('🎬 Python으로 자막 추출 시작:', videoId);
 
     // Python 스크립트 실행
     const pythonProcess = spawn('python', ['youtube_subtitle_real.py', 'subtitle', videoId], {
@@ -405,21 +539,19 @@ async function extractSubtitle(videoId) {
 
       if (code !== 0) {
         console.error('Python 스크립트 오류:', stderr);
-        resolve({
-          success: false,
-          error: `자막 추출 실패: ${stderr || 'Unknown error'}`
-        });
+        reject(new Error(`Python 실행 실패: ${stderr || 'Unknown error'}`));
         return;
       }
 
       try {
         const result = JSON.parse(stdout);
-        console.log('📝 자막 추출 결과:', result.subtitle ? '성공' : '실패');
+        console.log('📝 Python 자막 추출 결과:', result.subtitle ? '성공' : '실패');
 
         if (result.error) {
           resolve({
             success: false,
-            error: result.error
+            error: result.error,
+            message: result.error
           });
         } else {
           resolve({
@@ -428,25 +560,20 @@ async function extractSubtitle(videoId) {
             language: result.language,
             language_code: result.language_code,
             is_generated: result.is_generated,
-            video_id: result.video_id
+            video_id: result.video_id,
+            method: 'python-youtube-transcript-api'
           });
         }
       } catch (parseError) {
         console.error('JSON 파싱 오류:', parseError);
         console.error('Python 출력:', stdout);
-        resolve({
-          success: false,
-          error: `결과 파싱 실패: ${parseError.message}`
-        });
+        reject(new Error(`결과 파싱 실패: ${parseError.message}`));
       }
     });
 
     pythonProcess.on('error', (error) => {
       console.error('Python 프로세스 오류:', error);
-      resolve({
-        success: false,
-        error: `Python 실행 실패: ${error.message}`
-      });
+      reject(new Error(`Python 프로세스 실행 실패: ${error.message}`));
     });
   });
 }
@@ -455,6 +582,9 @@ async function extractSubtitle(videoId) {
 function handleRequest(req, res) {
   const parsedUrl = url.parse(req.url);
   const pathname = parsedUrl.pathname;
+
+  // 모든 요청 로깅
+  console.log(`📡 요청: ${req.method} ${pathname}`);
 
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -642,6 +772,7 @@ function handleApiRequest(req, res, pathname) {
 
   // 자막 추출
   } else if (pathname === '/api/youtube/subtitle' && req.method === 'POST') {
+    console.log('🌐 웹 앱에서 자막 추출 요청 받음:', pathname);
     let body = '';
 
     req.on('data', chunk => {
@@ -651,22 +782,48 @@ function handleApiRequest(req, res, pathname) {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
-        const { videoId } = data;
+        const { videoId, title } = data;
+        console.log('📝 받은 데이터:', { videoId, title });
+
+        if (!videoId) {
+          console.log('❌ videoId가 없음');
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'videoId is required' }));
+          return;
+        }
+
+        console.log('🎬 웹 앱 → 자막 추출 시작:', videoId);
 
         // 자막 추출 함수 호출
         extractSubtitle(videoId).then(result => {
+          console.log('✅ 웹 앱 → 자막 추출 완료:', result.success ? '성공' : '실패');
           res.writeHead(200);
           res.end(JSON.stringify(result));
         }).catch(error => {
+          console.log('❌ 웹 앱 → 자막 추출 오류:', error.message);
           res.writeHead(500);
           res.end(JSON.stringify({ error: error.message }));
         });
 
       } catch (e) {
+        console.log('❌ 웹 앱 → JSON 파싱 오류:', e.message);
         res.writeHead(400);
         res.end(JSON.stringify({ error: 'Invalid JSON' }));
       }
     });
+
+  // 자막 추출 GET 요청 처리 (Method not allowed 응답)
+  } else if (pathname === '/api/youtube/subtitle' && req.method === 'GET') {
+    console.log('🌐 웹 앱에서 자막 추출 GET 요청 받음 (허용되지 않음):', pathname);
+    res.writeHead(405, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.end(JSON.stringify({
+      success: false,
+      error: 'METHOD_NOT_ALLOWED',
+      message: 'GET method is not allowed. Use POST method.'
+    }));
 
   // 블로그 생성
   } else if (pathname === '/api/blog/generate' && req.method === 'POST') {

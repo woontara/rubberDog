@@ -1,3 +1,26 @@
 {
-  "version": 2
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/youtube/subtitle",
+      "dest": "/api/youtube/subtitle.js"
+    },
+    {
+      "src": "/api/youtube/subtitle-simple",
+      "dest": "/api/youtube/subtitle_simple.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
 }

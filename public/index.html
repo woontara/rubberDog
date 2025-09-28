@@ -236,6 +236,16 @@
             border-radius: 6px;
         }
 
+        .subtitle-item.success {
+            background-color: #f0f9f0;
+            border-left: 4px solid #28a745;
+        }
+
+        .subtitle-item.error {
+            background-color: #fdf2f2;
+            border-left: 4px solid #dc3545;
+        }
+
         .subtitle-item:last-child {
             border-bottom: none;
             margin-bottom: 0;
@@ -265,6 +275,39 @@
             font-size: 0.8em;
             color: #666;
             margin-top: 5px;
+        }
+
+        .subtitle-status.success {
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .subtitle-status.error {
+            color: #dc3545;
+            font-weight: 500;
+        }
+
+        .subtitle-error {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 8px;
+        }
+
+        .error-message {
+            color: #721c24;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .available-languages {
+            color: #856404;
+            background-color: #fff3cd;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ffeaa7;
+            font-size: 0.9em;
         }
 
         .channel-info {
@@ -898,19 +941,23 @@
 
                         const data = await response.json();
 
+                        // 자막 데이터 저장 (성공/실패 모두)
+                        const subtitleData = {
+                            videoId: video.id,
+                            title: video.title,
+                            subtitle: data.subtitle,
+                            success: data.success,
+                            error: data.error,
+                            message: data.message,
+                            available_languages: data.api_result?.available_languages || [],
+                            timestamp: new Date().toISOString()
+                        };
+
+                        // 기존 자막 제거 (중복 방지)
+                        extractedSubtitles = extractedSubtitles.filter(item => item.videoId !== video.id);
+                        extractedSubtitles.push(subtitleData);
+
                         if (data.success && data.subtitle) {
-                            // 자막 데이터 저장
-                            const subtitleData = {
-                                videoId: video.id,
-                                title: video.title,
-                                subtitle: data.subtitle,
-                                timestamp: new Date().toISOString()
-                            };
-
-                            // 기존 자막 제거 (중복 방지)
-                            extractedSubtitles = extractedSubtitles.filter(item => item.videoId !== video.id);
-                            extractedSubtitles.push(subtitleData);
-
                             console.log(`✅ 자막 추출 성공: ${video.title}`);
                         } else {
                             console.log(`❌ 자막 추출 실패: ${video.title} - ${data.error || '자막을 찾을 수 없습니다'}`);
@@ -948,14 +995,34 @@
 
             extractedSubtitles.forEach(item => {
                 const subtitleItem = document.createElement('div');
-                subtitleItem.className = 'subtitle-item';
+                subtitleItem.className = `subtitle-item ${item.success ? 'success' : 'error'}`;
 
-                subtitleItem.innerHTML = `
-                    <div class="subtitle-video-title">${item.title}</div>
-                    <div class="subtitle-text">${item.subtitle}</div>
-                    <div class="subtitle-status">추출 시간: ${new Date(item.timestamp).toLocaleString('ko-KR')}</div>
-                `;
+                let content = `<div class="subtitle-video-title">${item.title}</div>`;
 
+                if (item.success && item.subtitle) {
+                    // 성공한 경우
+                    content += `
+                        <div class="subtitle-text">${item.subtitle}</div>
+                        <div class="subtitle-status success">✅ 추출 성공 (${new Date(item.timestamp).toLocaleString('ko-KR')})</div>
+                    `;
+                } else {
+                    // 실패한 경우
+                    content += `
+                        <div class="subtitle-error">
+                            <div class="error-message">❌ ${item.message || item.error || '자막 추출 실패'}</div>
+                            ${item.available_languages && item.available_languages.length > 0 ? `
+                                <div class="available-languages">
+                                    <strong>감지된 자막:</strong> ${item.available_languages.map(lang =>
+                                        `${lang.name || lang.language} (${lang.kind})`
+                                    ).join(', ')}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="subtitle-status error">⚠️ 시도 시간: ${new Date(item.timestamp).toLocaleString('ko-KR')}</div>
+                    `;
+                }
+
+                subtitleItem.innerHTML = content;
                 subtitleList.appendChild(subtitleItem);
             });
         }

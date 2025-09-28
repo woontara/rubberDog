@@ -62,7 +62,22 @@
       "Bash(start https://rubber-43lvzvxyn-woontaras-projects.vercel.app)",
       "Bash(start http://localhost:3001)",
       "Bash(start https://rubber-dog.vercel.app/)",
-      "WebFetch(domain:rubber-dog.vercel.app)"
+      "WebFetch(domain:rubber-dog.vercel.app)",
+      "WebFetch(domain:developers.google.com)",
+      "Read(//e/**)",
+      "Bash(curl:*)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:rubber-6zvo66s8c-woontaras-projects.vercel.app)",
+      "Bash(yt-dlp:*)",
+      "WebFetch(domain:rubber-5e0lus4mi-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-5e0lus4mi-woontaras-projects.vercel.app)",
+      "WebFetch(domain:rubber-ofcivrfrx-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-ofcivrfrx-woontaras-projects.vercel.app)",
+      "WebSearch",
+      "Bash(NODE_ENV=production curl -X POST http://localhost:3001/api/youtube/subtitle -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"vOLXGEt3C-A\"\", \"\"title\"\": \"\"Test\"\"}\")",
+      "Bash(VERCEL=1 curl -X POST http://localhost:3001/api/youtube/subtitle -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"vOLXGEt3C-A\"\", \"\"title\"\": \"\"Test\"\"}\")",
+      "WebFetch(domain:rubber-kfzorxd9w-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-dog.vercel.app)"
     ],
     "deny": [],
     "ask": []
