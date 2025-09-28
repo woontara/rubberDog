@@ -183,11 +183,19 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Static file serving
-  let filePath = path.join(__dirname, '..', 'public', pathname === '/' ? 'index.html' : pathname);
+  // Static file serving - Vercel 환경 대응
+  let publicDir;
+  try {
+    // Vercel 환경에서는 public 디렉토리 위치가 다를 수 있음
+    publicDir = process.env.VERCEL ? path.join(process.cwd(), 'public') : path.join(__dirname, '..', 'public');
+  } catch (error) {
+    publicDir = path.join(__dirname, '..', 'public');
+  }
+
+  let filePath = path.join(publicDir, pathname === '/' ? 'index.html' : pathname);
 
   // Security check
-  if (!filePath.startsWith(path.join(__dirname, '..', 'public'))) {
+  if (!filePath.startsWith(publicDir)) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
