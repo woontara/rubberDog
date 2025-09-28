@@ -217,6 +217,17 @@
             cursor: pointer;
         }
 
+        .video-checkbox {
+            margin-right: 12px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .video-item.selected {
+            background-color: #e3f2fd;
+        }
+
         .video-item:hover {
             background-color: #f8f9fa;
         }
@@ -284,6 +295,41 @@
             margin-top: 10px;
         }
 
+        .selection-controls {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        .selection-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .btn-select:hover {
+            background-color: #f8f9fa;
+            border-color: #ccc;
+        }
+
+        .selection-info {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+        }
+
         .filter-checkbox {
             display: flex;
             align-items: center;
@@ -342,6 +388,14 @@
                 <!-- 필터 옵션 -->
                 <div class="input-group" style="margin-top: 30px;">
                     <label>🔍 필터 옵션</label>
+                    <div class="selection-controls">
+                        <div class="selection-buttons">
+                            <button class="btn-select" onclick="toggleAllVideos(true)">전체 선택</button>
+                            <button class="btn-select" onclick="toggleAllVideos(false)">전체 해제</button>
+                        </div>
+                        <div class="selection-info" id="selection-info">선택된 동영상: 0개</div>
+                    </div>
+
                     <div class="filter-options">
                         <label class="filter-checkbox">
                             <input type="checkbox" id="filter-subtitles">
@@ -539,6 +593,16 @@
                 filteredVideos.forEach(video => {
                     const videoItem = createVideoItem(video);
                     videoList.appendChild(videoItem);
+
+                    // 이전 선택 상태 복원
+                    const isSelected = selectedVideos.find(v => v.id === video.id);
+                    if (isSelected) {
+                        const checkbox = videoItem.querySelector('.video-checkbox');
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            updateVideoItemStyle(videoItem, true);
+                        }
+                    }
                 });
                 console.log(`✅ ${filteredVideos.length}개 영상 DOM에 추가 완료`);
             } else {
@@ -567,11 +631,13 @@
             channelInfo.style.display = 'flex';
         }
 
+        // 선택된 동영상 배열
+        let selectedVideos = [];
+
         // 비디오 리스트 아이템 생성
         function createVideoItem(video) {
             const item = document.createElement('div');
             item.className = 'video-item';
-            item.onclick = () => selectVideo(video);
 
             const thumbnail = video.thumbnail || '/api/placeholder/80/45';
             const title = video.title || '제목 없음';
@@ -579,6 +645,7 @@
             const publishedAt = video.publishedAt ? new Date(video.publishedAt).toLocaleDateString('ko-KR') : '';
 
             item.innerHTML = `
+                <input type="checkbox" class="video-checkbox" data-video-id="${video.id}">
                 <img src="${thumbnail}" alt="${title}" class="video-thumbnail">
                 <div class="video-content">
                     <div class="video-channel">${channel}</div>
@@ -587,14 +654,75 @@
                 </div>
             `;
 
+            // 체크박스 이벤트 처리
+            const checkbox = item.querySelector('.video-checkbox');
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                toggleVideoSelection(video, checkbox.checked);
+                updateVideoItemStyle(item, checkbox.checked);
+            });
+
+            // 비디오 아이템 클릭 시 체크박스 토글
+            item.addEventListener('click', (e) => {
+                if (e.target.type !== 'checkbox') {
+                    checkbox.checked = !checkbox.checked;
+                    toggleVideoSelection(video, checkbox.checked);
+                    updateVideoItemStyle(item, checkbox.checked);
+                }
+            });
+
             return item;
         }
 
-        // 비디오 선택
-        function selectVideo(video) {
-            console.log('Selected video:', video);
-            showStatus(`선택된 동영상: ${video.title}`, 'success');
-            // 여기에 블로그 생성 기능 추가 예정
+        // 비디오 선택/해제 토글
+        function toggleVideoSelection(video, isSelected) {
+            if (isSelected) {
+                if (!selectedVideos.find(v => v.id === video.id)) {
+                    selectedVideos.push(video);
+                }
+            } else {
+                selectedVideos = selectedVideos.filter(v => v.id !== video.id);
+            }
+
+            updateSelectionInfo();
+        }
+
+        // 선택 정보 업데이트
+        function updateSelectionInfo() {
+            const selectionInfo = document.getElementById('selection-info');
+            if (selectionInfo) {
+                selectionInfo.textContent = `선택된 동영상: ${selectedVideos.length}개`;
+            }
+            console.log('Selected videos:', selectedVideos.length);
+            showStatus(`선택된 동영상: ${selectedVideos.length}개`, selectedVideos.length > 0 ? 'success' : 'info');
+        }
+
+        // 비디오 아이템 스타일 업데이트
+        function updateVideoItemStyle(item, isSelected) {
+            if (isSelected) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        }
+
+        // 모든 비디오 선택/해제
+        function toggleAllVideos(selectAll) {
+            const checkboxes = document.querySelectorAll('.video-checkbox');
+            const videoItems = document.querySelectorAll('.video-item');
+
+            checkboxes.forEach((checkbox, index) => {
+                checkbox.checked = selectAll;
+                updateVideoItemStyle(videoItems[index], selectAll);
+            });
+
+            if (selectAll) {
+                selectedVideos = [...currentVideos];
+            } else {
+                selectedVideos = [];
+            }
+
+            updateSelectionInfo();
         }
 
         // 숫자 포맷팅

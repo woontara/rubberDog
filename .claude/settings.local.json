@@ -61,7 +61,8 @@
       "Bash(start https://rubber-49naqddga-woontaras-projects.vercel.app)",
       "Bash(start https://rubber-43lvzvxyn-woontaras-projects.vercel.app)",
       "Bash(start http://localhost:3001)",
-      "Bash(start https://rubber-dog.vercel.app/)"
+      "Bash(start https://rubber-dog.vercel.app/)",
+      "WebFetch(domain:rubber-dog.vercel.app)"
     ],
     "deny": [],
     "ask": []
