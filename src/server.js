@@ -161,8 +161,8 @@ function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callback) {
   });
 }
 
-// Create HTTP server
-const server = http.createServer((req, res) => {
+// 공통 Request Handler 함수
+function handleRequest(req, res) {
   const parsedUrl = url.parse(req.url);
   const pathname = parsedUrl.pathname;
 
@@ -219,7 +219,10 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(content);
   });
-});
+}
+
+// Create HTTP server (로컬 환경용)
+const server = http.createServer(handleRequest);
 
 // Extract session from request
 function getSessionFromRequest(req) {
@@ -720,7 +723,7 @@ async function startServer() {
 // Vercel Serverless Function 핸들러
 async function handler(req, res) {
   await ensureInitialized();
-  return server(req, res);
+  return handleRequest(req, res);
 }
 
 // 환경에 따른 실행
