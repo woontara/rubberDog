@@ -133,6 +133,13 @@ function getYouTubeApiKeys() {
     keys.push(...process.env.YOUTUBE_API_KEYS.split(',').map(key => key.trim()));
   }
 
+  // 디버깅: 환경변수가 하나도 없다면 테스트용 에러 메시지
+  if (keys.length === 0) {
+    console.error('🚨 No YouTube API keys found!');
+    console.error('Environment variables available:', Object.keys(process.env).filter(k => k.includes('YOUTUBE')));
+    console.error('All env vars count:', Object.keys(process.env).length);
+  }
+
   return keys;
 }
 
