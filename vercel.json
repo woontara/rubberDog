@@ -1,6 +1,15 @@
 {
   "version": 2,
+  "functions": {
+    "api/youtube/subtitle.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "routes": [
+    {
+      "src": "/api/youtube/subtitle",
+      "dest": "/api/youtube/subtitle.js"
+    },
     {
       "src": "/api/youtube",
       "dest": "/api/youtube.js"
