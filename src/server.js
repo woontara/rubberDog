@@ -331,11 +331,23 @@ async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callbac
   try {
     const apiKeys = getYouTubeApiKeys();
 
+    // 디버깅을 위한 로그 추가
+    console.log('Environment variables check:');
+    console.log('YOUTUBE_API_KEY_PRIMARY:', process.env.YOUTUBE_API_KEY_PRIMARY ? 'SET' : 'NOT SET');
+    console.log('YOUTUBE_API_KEY_BACKUP:', process.env.YOUTUBE_API_KEY_BACKUP ? 'SET' : 'NOT SET');
+    console.log('YOUTUBE_API_KEY_ADDITIONAL:', process.env.YOUTUBE_API_KEY_ADDITIONAL ? 'SET' : 'NOT SET');
+    console.log('YOUTUBE_API_KEYS:', process.env.YOUTUBE_API_KEYS ? 'SET' : 'NOT SET');
+    console.log('Total API keys found:', apiKeys.length);
+
     if (apiKeys.length === 0) {
-      throw new Error('YouTube API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.');
+      const errorMsg = 'YouTube API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.';
+      console.error(errorMsg);
+      console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('YOUTUBE')));
+      throw new Error(errorMsg);
     }
 
     if (action === 'analyze') {
+      console.log('Starting YouTube analysis for:', urlOrId);
       const result = await analyzeYouTube(urlOrId, apiKeys, filters);
       callback(null, result);
     } else if (action === 'subtitle') {
