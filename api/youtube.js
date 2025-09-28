@@ -201,183 +201,196 @@ async function getChannelInfo(channelId, apiKey) {
 
 // 채널의 모든 동영상 목록 가져오기 (개선된 방법)
 async function getAllChannelVideos(channelId, apiKey, totalVideoCount) {
+  console.log(`📊 시작: 채널 ID ${channelId}, 총 영상 수: ${totalVideoCount}`);
+
+  // 방법 1: 채널 업로드 플레이리스트 시도
   try {
-    // 방법 1: 채널의 업로드 플레이리스트 사용 (더 정확함)
-    console.log(`📊 채널 총 영상 수: ${totalVideoCount}, 업로드 플레이리스트 방식으로 가져오기 시작`);
-
-    const uploadsPlaylistId = 'UU' + channelId.substring(2); // UC를 UU로 변경
-    console.log(`🎬 업로드 플레이리스트 ID: ${uploadsPlaylistId}`);
-
-    let allVideos = [];
-    let nextPageToken = null;
-    const maxPerPage = 50;
-    let pageCount = 0;
-    const maxPages = 20; // 최대 1000개 영상 (50 * 20)
-
-    do {
-      pageCount++;
-      let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=${maxPerPage}&key=${apiKey}`;
-      if (nextPageToken) {
-        url += `&pageToken=${nextPageToken}`;
-      }
-
-      console.log(`🔄 페이지 ${pageCount} 요청: ${allVideos.length + 1}-${allVideos.length + maxPerPage}`);
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (!data.items || data.items.length === 0) {
-        console.log(`❌ 더 이상 영상이 없습니다.`);
-        break;
-      }
-
-      // 현재 페이지의 동영상 ID들 수집
-      const videoIds = data.items
-        .filter(item => item.snippet?.resourceId?.videoId)
-        .map(item => item.snippet.resourceId.videoId)
-        .join(',');
-
-      if (!videoIds) {
-        console.log(`⚠️ 페이지 ${pageCount}에서 유효한 비디오 ID를 찾을 수 없습니다.`);
-        break;
-      }
-
-      // 동영상 세부 정보 가져오기
-      const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
-      const detailsResponse = await fetch(detailsUrl);
-      const detailsData = await detailsResponse.json();
-
-      // 데이터 매핑
-      const pageVideos = data.items
-        .filter(item => item.snippet?.resourceId?.videoId)
-        .map(item => {
-          const videoId = item.snippet.resourceId.videoId;
-          const details = detailsData.items?.find(d => d.id === videoId);
-
-          if (!details) return null;
-
-          const duration = details.contentDetails?.duration;
-          const durationInSeconds = parseDuration(duration);
-          const hasSubtitles = details.contentDetails?.caption === 'true';
-
-          const travelKeywords = ['여행', '관광', '맛집', 'travel', '호텔', '리조트', '카페', '바다', '산', '도시', '투어', '휴가', '맛있는', '음식', '식당'];
-          const title = (details.snippet?.title || '').toLowerCase();
-          const description = (details.snippet?.description || '').toLowerCase();
-          const isTravelRelated = travelKeywords.some(keyword =>
-            title.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase())
-          );
-
-          return {
-            id: videoId,
-            title: details.snippet?.title || '',
-            description: details.snippet?.description || '',
-            thumbnail: details.snippet?.thumbnails?.medium?.url || details.snippet?.thumbnails?.default?.url || '',
-            publishedAt: details.snippet?.publishedAt || '',
-            channelTitle: details.snippet?.channelTitle || '',
-            url: `https://www.youtube.com/watch?v=${videoId}`,
-            duration: duration || '',
-            durationInSeconds: durationInSeconds,
-            hasSubtitles: hasSubtitles,
-            isTravelRelated: isTravelRelated,
-            viewCount: parseInt(details.statistics?.viewCount || 0)
-          };
-        })
-        .filter(video => video !== null);
-
-      allVideos = allVideos.concat(pageVideos);
-      nextPageToken = data.nextPageToken;
-
-      console.log(`✅ ${pageVideos.length}개 추가됨, 총 ${allVideos.length}개`);
-
-      // 다음 페이지가 없거나 최대 페이지에 도달하면 중단
-      if (!nextPageToken || pageCount >= maxPages) {
-        console.log(`🎯 완료: nextPageToken=${!!nextPageToken}, pageCount=${pageCount}`);
-        break;
-      }
-
-    } while (true);
-
-    console.log(`🏁 최종 완료: 총 ${allVideos.length}개 영상 로드됨`);
-    return allVideos;
-
+    const playlistResult = await getChannelVideosPlaylist(channelId, apiKey);
+    if (playlistResult && playlistResult.length > 0) {
+      console.log(`✅ 플레이리스트 방식 성공: ${playlistResult.length}개 영상`);
+      return playlistResult;
+    }
   } catch (error) {
-    console.error('모든 동영상 목록 조회 오류:', error);
+    console.error('플레이리스트 방식 실패:', error.message);
+  }
 
-    // 플레이리스트 방법이 실패하면 기존 search 방법으로 폴백
-    console.log('🔄 Search API로 폴백 시도...');
-    return await getChannelVideosSearch(channelId, apiKey);
+  // 방법 2: Search API 폴백
+  try {
+    const searchResult = await getChannelVideosSearch(channelId, apiKey);
+    console.log(`✅ Search 방식 성공: ${searchResult.length}개 영상`);
+    return searchResult;
+  } catch (error) {
+    console.error('Search 방식 실패:', error.message);
+    return [];
   }
 }
 
-// 기존 search 방식 (폴백용)
-async function getChannelVideosSearch(channelId, apiKey) {
-  try {
-    let allVideos = [];
-    let nextPageToken = null;
-    const maxPerPage = 50;
-    let pageCount = 0;
-    const maxPages = 10; // 최대 500개
+// 플레이리스트 방식으로 채널 동영상 가져오기
+async function getChannelVideosPlaylist(channelId, apiKey) {
+  const uploadsPlaylistId = 'UU' + channelId.substring(2);
+  console.log(`🎬 업로드 플레이리스트 ID: ${uploadsPlaylistId}`);
 
-    do {
-      pageCount++;
-      let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxPerPage}&key=${apiKey}`;
-      if (nextPageToken) {
-        url += `&pageToken=${nextPageToken}`;
-      }
+  let allVideos = [];
+  let nextPageToken = null;
+  const maxPerPage = 50;
+  let pageCount = 0;
+  const maxPages = 20;
 
-      console.log(`🔄 Search 방식 페이지 ${pageCount}`);
+  do {
+    pageCount++;
+    let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=${maxPerPage}&key=${apiKey}`;
+    if (nextPageToken) {
+      url += `&pageToken=${nextPageToken}`;
+    }
 
-      const response = await fetch(url);
-      const data = await response.json();
+    console.log(`🔄 플레이리스트 페이지 ${pageCount} 요청`);
 
-      if (!data.items || data.items.length === 0) break;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API 응답 오류: ${response.status} ${response.statusText}`);
+    }
 
-      const videoIds = data.items.map(item => item.id.videoId).join(',');
-      const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
-      const detailsResponse = await fetch(detailsUrl);
-      const detailsData = await detailsResponse.json();
+    const data = await response.json();
 
-      const pageVideos = data.items.map(item => {
-        const details = detailsData.items?.find(d => d.id === item.id.videoId);
-        const duration = details?.contentDetails?.duration;
-        const durationInSeconds = parseDuration(duration);
-        const hasSubtitles = details?.contentDetails?.caption === 'true';
+    if (data.error) {
+      throw new Error(`YouTube API 오류: ${data.error.message}`);
+    }
 
-        const travelKeywords = ['여행', '관광', '맛집', 'travel', '호텔', '리조트', '카페', '바다', '산', '도시', '투어', '휴가', '맛있는', '음식', '식당'];
-        const title = item.snippet.title.toLowerCase();
-        const description = item.snippet.description.toLowerCase();
-        const isTravelRelated = travelKeywords.some(keyword =>
-          title.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase())
-        );
+    if (!data.items || data.items.length === 0) {
+      console.log(`❌ 더 이상 영상이 없습니다.`);
+      break;
+    }
 
-        return {
-          id: item.id.videoId,
-          title: item.snippet.title,
-          description: item.snippet.description,
-          thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
-          publishedAt: item.snippet.publishedAt,
-          channelTitle: item.snippet.channelTitle,
-          url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-          duration: duration,
-          durationInSeconds: durationInSeconds,
-          hasSubtitles: hasSubtitles,
-          isTravelRelated: isTravelRelated,
-          viewCount: parseInt(details?.statistics?.viewCount || 0)
-        };
-      });
+    // 현재 페이지의 동영상 ID들 수집
+    const videoIds = data.items
+      .filter(item => item.snippet?.resourceId?.videoId)
+      .map(item => item.snippet.resourceId.videoId)
+      .join(',');
 
-      allVideos = allVideos.concat(pageVideos);
-      nextPageToken = data.nextPageToken;
+    if (!videoIds) {
+      console.log(`⚠️ 페이지 ${pageCount}에서 유효한 비디오 ID를 찾을 수 없습니다.`);
+      break;
+    }
 
-      console.log(`✅ Search 방식: ${pageVideos.length}개 추가됨, 총 ${allVideos.length}개`);
+    // 동영상 세부 정보 가져오기
+    const videos = await getVideoDetails(videoIds, apiKey);
+    allVideos = allVideos.concat(videos);
+    nextPageToken = data.nextPageToken;
 
-    } while (nextPageToken && pageCount < maxPages);
+    console.log(`✅ ${videos.length}개 추가됨, 총 ${allVideos.length}개`);
 
-    return allVideos;
-  } catch (error) {
-    console.error('Search 방식 오류:', error);
-    return [];
+    if (!nextPageToken || pageCount >= maxPages) {
+      console.log(`🎯 플레이리스트 완료: nextPageToken=${!!nextPageToken}, pageCount=${pageCount}`);
+      break;
+    }
+
+  } while (true);
+
+  return allVideos;
+}
+
+// 동영상 세부 정보 가져오기 (공통 함수)
+async function getVideoDetails(videoIds, apiKey) {
+  const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
+  const detailsResponse = await fetch(detailsUrl);
+
+  if (!detailsResponse.ok) {
+    throw new Error(`동영상 세부정보 API 오류: ${detailsResponse.status}`);
   }
+
+  const detailsData = await detailsResponse.json();
+
+  if (detailsData.error) {
+    throw new Error(`YouTube API 오류: ${detailsData.error.message}`);
+  }
+
+  const travelKeywords = ['여행', '관광', '맛집', 'travel', '호텔', '리조트', '카페', '바다', '산', '도시', '투어', '휴가', '맛있는', '음식', '식당'];
+
+  return detailsData.items.map(details => {
+    const duration = details.contentDetails?.duration;
+    const durationInSeconds = parseDuration(duration);
+    const hasSubtitles = details.contentDetails?.caption === 'true';
+
+    const title = (details.snippet?.title || '').toLowerCase();
+    const description = (details.snippet?.description || '').toLowerCase();
+    const isTravelRelated = travelKeywords.some(keyword =>
+      title.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase())
+    );
+
+    return {
+      id: details.id,
+      title: details.snippet?.title || '',
+      description: details.snippet?.description || '',
+      thumbnail: details.snippet?.thumbnails?.medium?.url || details.snippet?.thumbnails?.default?.url || '',
+      publishedAt: details.snippet?.publishedAt || '',
+      channelTitle: details.snippet?.channelTitle || '',
+      url: `https://www.youtube.com/watch?v=${details.id}`,
+      duration: duration || '',
+      durationInSeconds: durationInSeconds,
+      hasSubtitles: hasSubtitles,
+      isTravelRelated: isTravelRelated,
+      viewCount: parseInt(details.statistics?.viewCount || 0)
+    };
+  });
+}
+
+// Search API 방식 (폴백용) - 개선된 버전
+async function getChannelVideosSearch(channelId, apiKey) {
+  let allVideos = [];
+  let nextPageToken = null;
+  const maxPerPage = 50;
+  let pageCount = 0;
+  const maxPages = 15; // 최대 750개
+
+  do {
+    pageCount++;
+    let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxPerPage}&key=${apiKey}`;
+    if (nextPageToken) {
+      url += `&pageToken=${nextPageToken}`;
+    }
+
+    console.log(`🔄 Search 페이지 ${pageCount} 요청`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Search API 응답 오류: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(`YouTube Search API 오류: ${data.error.message}`);
+    }
+
+    if (!data.items || data.items.length === 0) {
+      console.log(`❌ Search API: 더 이상 영상이 없습니다.`);
+      break;
+    }
+
+    const videoIds = data.items
+      .filter(item => item.id?.videoId)
+      .map(item => item.id.videoId)
+      .join(',');
+
+    if (!videoIds) {
+      console.log(`⚠️ Search 페이지 ${pageCount}에서 유효한 비디오 ID를 찾을 수 없습니다.`);
+      break;
+    }
+
+    const videos = await getVideoDetails(videoIds, apiKey);
+    allVideos = allVideos.concat(videos);
+    nextPageToken = data.nextPageToken;
+
+    console.log(`✅ Search: ${videos.length}개 추가됨, 총 ${allVideos.length}개`);
+
+    if (!nextPageToken || pageCount >= maxPages) {
+      console.log(`🎯 Search 완료: nextPageToken=${!!nextPageToken}, pageCount=${pageCount}`);
+      break;
+    }
+
+  } while (true);
+
+  return allVideos;
 }
 
 // 기존 단일 페이지 동영상 목록 가져오기 함수 (백업용)
