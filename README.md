@@ -66,7 +66,7 @@ cp .env.example .env
 # 필수 API 키들 (Required API Keys)
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 YOUTUBE_API_KEY_PRIMARY=your_primary_youtube_api_key_here
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/YOUR_DATABASE
 
 # 선택사항 API 키들 (Optional API Keys)
 YOUTUBE_API_KEY_BACKUP=your_backup_youtube_api_key_here
