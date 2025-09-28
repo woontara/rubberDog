@@ -13,46 +13,11 @@ try {
 } catch (error) {
   console.warn('Fetch not available:', error.message);
 }
-// MongoDB 기반 매니저들 (우선 사용)
-let MongoUserManager, MongoStorageManager;
-let FileUserManager, FileStorageManager;
-
-// 매니저 인스턴스 변수
-let mongoUserManager, mongoStorageManager;
-let fileUserManager, fileStorageManager;
-let userManager, userDataManager;
+// 인증 시스템을 비활성화하고 YouTube 분석 기능만 사용
+console.log('ℹ️ 인증 시스템 비활성화 - YouTube 분석 전용 모드');
+let userManager = null;
+let userDataManager = null;
 let usingMongoDB = false;
-
-// 모듈 로딩 및 초기화 (에러 처리 포함)
-try {
-  MongoUserManager = require('../models/mongo-user');
-  MongoStorageManager = require('../models/mongo-storage');
-  FileUserManager = require('../models/user');
-  FileStorageManager = require('../models/storage');
-
-  // 매니저 인스턴스 생성
-  mongoUserManager = new MongoUserManager();
-  mongoStorageManager = new MongoStorageManager();
-  fileUserManager = FileUserManager; // 이미 인스턴스로 export됨
-  fileStorageManager = FileStorageManager; // 이미 인스턴스로 export됨
-
-  // 기본값으로 파일 기반 매니저 사용 (MongoDB 연결 실패 시 fallback)
-  userManager = fileUserManager;
-  userDataManager = fileStorageManager;
-} catch (error) {
-  console.error('Model loading error:', error);
-  // Fallback: 기본 객체들로 초기화
-  userManager = {
-    getUser: () => null,
-    createUser: () => false,
-    updateUser: () => false
-  };
-  userDataManager = {
-    saveData: () => false,
-    getData: () => null,
-    listData: () => []
-  };
-}
 
 
 // Default Claude API 키 (fallback only - 환경변수에서 가져옴)
@@ -117,20 +82,29 @@ const mimeTypes = {
 function getYouTubeApiKeys() {
   const keys = [];
 
-  // 환경변수에서 API 키들 읽기
-  if (process.env.YOUTUBE_API_KEY_PRIMARY) {
-    keys.push(process.env.YOUTUBE_API_KEY_PRIMARY);
-  }
-  if (process.env.YOUTUBE_API_KEY_BACKUP) {
-    keys.push(process.env.YOUTUBE_API_KEY_BACKUP);
-  }
-  if (process.env.YOUTUBE_API_KEY_ADDITIONAL) {
-    keys.push(process.env.YOUTUBE_API_KEY_ADDITIONAL);
+  // 다양한 환경변수명 지원
+  const possibleKeys = [
+    'YOUTUBE_API_KEY_PRIMARY',
+    'YOUTUBE_API_KEY_BACKUP',
+    'YOUTUBE_API_KEY_ADDITIONAL',
+    'YOUTUBE_API_KEY',  // 기본
+    'YOUTUBE_API_KEY_1',
+    'YOUTUBE_API_KEY_2',
+    'YOUTUBE_API_KEY_3'
+  ];
+
+  // 각 환경변수를 확인해서 추가
+  for (const keyName of possibleKeys) {
+    if (process.env[keyName]) {
+      keys.push(process.env[keyName]);
+      console.log(`✅ Found API key: ${keyName}`);
+    }
   }
 
   // 단일 환경변수에서 쉼표로 구분된 키들 읽기 (fallback)
   if (keys.length === 0 && process.env.YOUTUBE_API_KEYS) {
     keys.push(...process.env.YOUTUBE_API_KEYS.split(',').map(key => key.trim()));
+    console.log(`✅ Found API keys from YOUTUBE_API_KEYS: ${keys.length} keys`);
   }
 
   // 디버깅: 환경변수가 하나도 없다면 테스트용 에러 메시지
@@ -230,6 +204,10 @@ async function analyzeYouTube(url, apiKeys, filters = {}) {
 
   if (!parsed) {
     throw new Error('올바른 YouTube URL이 아닙니다.');
+  }
+
+  if (!apiKeys || !Array.isArray(apiKeys) || apiKeys.length === 0) {
+    throw new Error('YouTube API 키가 설정되지 않았습니다.');
   }
 
   let apiKeyIndex = 0;
@@ -362,6 +340,7 @@ async function analyzeChannel(channelIdentifier, identifierType, apiKey, filters
   };
 }
 
+
 // Helper function to run YouTube API (JavaScript 버전)
 async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callback) {
   try {
@@ -376,9 +355,10 @@ async function runYouTubeScript(action, urlOrId, page = 1, filters = {}, callbac
     console.log('Total API keys found:', apiKeys.length);
 
     if (apiKeys.length === 0) {
+      console.error('🚨 No YouTube API keys found!');
+      console.error('Environment variables available:', Object.keys(process.env).filter(key => key.includes('YOUTUBE')));
+      console.error('All env vars count:', Object.keys(process.env).length);
       const errorMsg = 'YouTube API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.';
-      console.error(errorMsg);
-      console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('YOUTUBE')));
       throw new Error(errorMsg);
     }
 
@@ -460,28 +440,14 @@ function handleRequest(req, res) {
 // Create HTTP server (로컬 환경용)
 const server = http.createServer(handleRequest);
 
-// Extract session from request
+// Extract session from request (비활성화됨)
 function getSessionFromRequest(req) {
-  const cookies = req.headers.cookie;
-  if (cookies) {
-    const sessionMatch = cookies.match(/sessionId=([^;]+)/);
-    if (sessionMatch) {
-      return sessionMatch[1];
-    }
-  }
-  return null;
+  return null; // 인증 시스템 비활성화
 }
 
-// Get user from session
+// Get user from session (비활성화됨 - 인증 없이 사용)
 function getUserFromSession(req) {
-  const sessionId = getSessionFromRequest(req);
-  if (sessionId) {
-    const userId = userManager.validateSession(sessionId);
-    if (userId) {
-      return userManager.getUserById(userId);
-    }
-  }
-  return null;
+  return null; // 인증 시스템 비활성화
 }
 
 // Handle API requests
@@ -540,15 +506,26 @@ function handleApiRequest(req, res, pathname) {
     return;
   }
 
-  // Protected routes (require authentication)
-  const user = getUserFromSession(req);
-  if (!user) {
-    res.writeHead(401);
-    res.end(JSON.stringify({ error: '인증이 필요합니다' }));
+  // Environment variable debugging endpoint (for development)
+  if (pathname === '/api/debug/env' && req.method === 'GET') {
+    const debugInfo = {
+      nodeEnv: process.env.NODE_ENV,
+      vercel: !!process.env.VERCEL,
+      hasYoutubeKey1: !!process.env.YOUTUBE_API_KEY,
+      hasYoutubeKey2: !!process.env.YOUTUBE_API_KEY_2,
+      hasYoutubeKey3: !!process.env.YOUTUBE_API_KEY_3,
+      hasClaudeKey: !!process.env.CLAUDE_API_KEY,
+      hasMongoUri: !!process.env.MONGODB_URI,
+      envKeys: Object.keys(process.env).filter(key =>
+        key.includes('YOUTUBE') || key.includes('CLAUDE') || key.includes('MONGO')
+      )
+    };
+    res.writeHead(200);
+    res.end(JSON.stringify(debugInfo, null, 2));
     return;
   }
 
-  // YouTube URL 분석
+  // YouTube URL 분석 (인증 불필요)
   if (pathname === '/api/youtube/analyze' && req.method === 'POST') {
     let body = '';
 
@@ -556,23 +533,34 @@ function handleApiRequest(req, res, pathname) {
       body += chunk.toString();
     });
 
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
+        console.log('📥 YouTube API 요청 받음:', body);
         const data = JSON.parse(body);
         const { url, filters = {} } = data;
+        console.log('🔍 파싱된 데이터:', { url, filters });
 
-        // 실제 YouTube API 호출 (필터 포함)
-        runYouTubeScript('analyze', url, 1, filters, (error, result) => {
-          if (error) {
-            res.writeHead(500);
-            res.end(JSON.stringify({ error: error }));
-          } else {
-            res.writeHead(200);
-            res.end(JSON.stringify(result));
+        // 실제 YouTube API 호출 (async/await 패턴)
+        try {
+          const apiKeys = getYouTubeApiKeys();
+          console.log('🔑 API 키 개수:', apiKeys.length);
+
+          if (apiKeys.length === 0) {
+            throw new Error('YouTube API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.');
           }
-        });
+
+          const result = await analyzeYouTube(url, apiKeys, filters);
+          console.log('✅ YouTube API 성공:', result ? 'data received' : 'no data');
+          res.writeHead(200);
+          res.end(JSON.stringify(result));
+        } catch (error) {
+          console.error('❌ YouTube API 오류:', error);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: error.message }));
+        }
 
       } catch (e) {
+        console.error('❌ JSON 파싱 오류:', e);
         res.writeHead(400);
         res.end(JSON.stringify({ error: 'Invalid JSON' }));
       }
@@ -627,8 +615,8 @@ function handleApiRequest(req, res, pathname) {
         });
         const { prompt } = data;
 
-        // 사용자 API 키 또는 기본값 사용
-        const apiKey = user.apiKeys?.claude || DEFAULT_CLAUDE_API_KEY;
+        // 환경변수에서 Claude API 키 가져오기
+        const apiKey = process.env.CLAUDE_API_KEY || DEFAULT_CLAUDE_API_KEY;
 
         // 프롬프트 검증
         if (!prompt || prompt.trim().length === 0) {
@@ -893,31 +881,8 @@ function handleSaveUserBlog(req, res) {
 
 // MongoDB 연결 및 초기화
 async function initializeDatabase() {
-  const mongoUri = process.env.MONGODB_URI;
-
-  if (mongoUri) {
-    console.log('🔌 MongoDB Atlas 연결 시도 중...');
-    const connected = await mongoUserManager.connect(mongoUri);
-
-    if (connected) {
-      usingMongoDB = true;
-      console.log('✅ MongoDB Atlas 연결 성공 - 클라우드 스토리지 활성화');
-
-      // DB 통계 출력
-      const stats = await mongoUserManager.getDatabaseStats();
-      if (stats) {
-        console.log(`📊 무료 티어 사용량: ${stats.usagePercent}% (${Math.round(stats.storageSize/1024/1024)}MB / 512MB)`);
-      }
-    } else {
-      console.log('⚠️ MongoDB 연결 실패 - 로컬 파일 시스템 사용');
-      userManager = FileUserManager;
-      userDataManager = FileStorageManager;
-    }
-  } else {
-    console.log('ℹ️ MongoDB URI 없음 - 로컬 파일 시스템 사용');
-    userManager = FileUserManager;
-    userDataManager = FileStorageManager;
-  }
+  console.log('ℹ️ 데이터베이스 초기화 건너뜀 - YouTube 분석 전용 모드');
+  // 인증 시스템 비활성화로 인해 데이터베이스 초기화 불필요
 }
 
 const PORT = process.env.PORT || 3001;
@@ -930,12 +895,9 @@ let initialized = false;
 async function ensureInitialized() {
   if (!initialized) {
     await initializeDatabase();
-    if (userManager.startSessionCleanup) {
-      userManager.startSessionCleanup();
-    }
+    // 인증 시스템 비활성화로 세션 정리 불필요
     initialized = true;
-    console.log(`🚀 RubberDog initialized for ${isVercel ? 'Vercel' : 'Local'}`);
-    console.log(`👥 Multi-user support: ${usingMongoDB ? 'MongoDB Atlas' : 'Local Files'}`);
+    console.log(`🚀 RubberDog initialized for ${isVercel ? 'Vercel' : 'Local'} - YouTube 분석 전용 모드`);
   }
 }
 

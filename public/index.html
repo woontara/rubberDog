@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🐕 RubberDog - YouTube to Blog</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐕</text></svg>">
     <style>
         * {
             margin: 0;
@@ -15,13 +16,19 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
             padding: 20px;
         }
 
         .header {
             text-align: center;
             color: white;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .header h1 {
@@ -35,17 +42,26 @@
             opacity: 0.9;
         }
 
-        .main-container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .main-layout {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 30px;
+            height: calc(100vh - 200px);
         }
 
-        .input-section {
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+        }
+
+        .input-panel {
             background: white;
-            padding: 40px;
             border-radius: 15px;
+            padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            height: fit-content;
         }
 
         .input-group {
@@ -59,19 +75,14 @@
             color: #333;
         }
 
-        .url-input-container {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
         .url-input {
-            flex: 1;
+            width: 100%;
             padding: 15px;
             border: 2px solid #e1e5e9;
             border-radius: 10px;
             font-size: 16px;
             transition: border-color 0.3s ease;
+            margin-bottom: 15px;
         }
 
         .url-input:focus {
@@ -81,7 +92,8 @@
         }
 
         .analyze-btn {
-            padding: 15px 30px;
+            width: 100%;
+            padding: 15px;
             background: #667eea;
             color: white;
             border: none;
@@ -90,7 +102,10 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.3s ease;
-            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .analyze-btn:hover {
@@ -100,6 +115,21 @@
         .analyze-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .status-message {
@@ -128,7 +158,7 @@
             border: 1px solid #b3d7ff;
         }
 
-        .results-section {
+        .results-panel {
             background: white;
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
@@ -143,7 +173,7 @@
         }
 
         .results-header h3 {
-            margin: 0;
+            margin: 0 0 15px 0;
             color: #333;
             font-size: 1.5em;
         }
@@ -152,7 +182,6 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            margin-top: 15px;
         }
 
         .channel-thumbnail {
@@ -173,122 +202,193 @@
             font-size: 0.9em;
         }
 
-        .video-grid {
+        .video-list {
             padding: 25px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            max-height: calc(100vh - 350px);
+            overflow-y: auto;
         }
 
-        .video-card {
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            overflow: hidden;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .video-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
             cursor: pointer;
         }
 
-        .video-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        .video-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .video-item:last-child {
+            border-bottom: none;
         }
 
         .video-thumbnail {
-            width: 100%;
-            height: 180px;
+            width: 80px;
+            height: 45px;
             object-fit: cover;
+            border-radius: 6px;
+            margin-right: 15px;
+            flex-shrink: 0;
         }
 
-        .video-info {
-            padding: 15px;
+        .video-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .video-channel {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 2px;
+            font-weight: 500;
         }
 
         .video-title {
             font-weight: 600;
-            margin-bottom: 8px;
+            margin: 0;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            line-height: 1.4;
+            line-height: 1.3;
+            font-size: 0.9em;
+            color: #333;
         }
 
         .video-meta {
-            font-size: 0.85em;
+            font-size: 0.75em;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
             color: #666;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            font-size: 1.5em;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+        }
+
+        .filter-options {
+            margin-top: 10px;
+        }
+
+        .filter-checkbox {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: #555;
+            transition: color 0.2s ease;
         }
 
-        .video-duration {
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.8em;
+        .filter-checkbox:hover {
+            color: #333;
         }
 
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .filter-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            accent-color: #667eea;
+            cursor: pointer;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .filter-checkbox span {
+            user-select: none;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🐕 RubberDog</h1>
-        <p>YouTube to Blog 자동화 시스템</p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>🐕 RubberDog</h1>
+            <p>YouTube to Blog 자동화 시스템</p>
+        </div>
 
-    <div class="main-container">
-        <!-- YouTube URL 입력 섹션 -->
-        <div class="input-section">
-            <div class="input-group">
-                <label for="youtube-url">📹 YouTube 채널 또는 동영상 URL</label>
-                <div class="url-input-container">
+        <div class="main-layout">
+            <!-- 입력 패널 -->
+            <div class="input-panel">
+                <div class="input-group">
+                    <label for="youtube-url">📹 YouTube 채널 또는 동영상 URL</label>
                     <input
                         type="url"
                         id="youtube-url"
                         class="url-input"
-                        placeholder="https://www.youtube.com/@채널명 또는 https://youtu.be/동영상ID"
+                        placeholder="https://www.youtube.com/@채널명"
                         autocomplete="off"
                     >
                     <button id="analyze-btn" class="analyze-btn" onclick="analyzeYouTube()">
-                        <span id="btn-text">분석하기</span>
-                        <span id="btn-spinner" class="loading-spinner" style="display: none;"></span>
+                        <span id="btn-text">동영상 목록 가져오기</span>
+                        <div id="btn-spinner" class="loading-spinner"></div>
                     </button>
                 </div>
-            </div>
 
-            <div id="status-message" class="status-message"></div>
-        </div>
+                <div id="status-message" class="status-message"></div>
 
-        <!-- 결과 표시 섹션 -->
-        <div id="results-section" class="results-section">
-            <div class="results-header">
-                <h3 id="results-title">분석 결과</h3>
-                <div id="channel-info" class="channel-info" style="display: none;">
-                    <img id="channel-thumbnail" class="channel-thumbnail" alt="채널 썸네일">
-                    <div class="channel-details">
-                        <h4 id="channel-name"></h4>
-                        <p id="channel-stats"></p>
+                <!-- 필터 옵션 -->
+                <div class="input-group" style="margin-top: 30px;">
+                    <label>🔍 필터 옵션</label>
+                    <div class="filter-options">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filter-subtitles" checked>
+                            <span>자막 있는 영상만</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filter-duration" checked>
+                            <span>2분 이상 영상만</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filter-travel" checked>
+                            <span>여행 관련 영상만</span>
+                        </label>
                     </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 30px;">
+                    <label>💡 지원하는 URL 형식</label>
+                    <p style="font-size: 0.9em; color: #666; line-height: 1.5;">
+                        • @채널명: youtube.com/@woowakgood<br>
+                        • 채널 ID: youtube.com/channel/UC...<br>
+                        • 커스텀 URL: youtube.com/c/채널명<br>
+                        • 사용자명: youtube.com/user/사용자명<br>
+                        • 동영상 URL: youtube.com/watch?v=...
+                    </p>
                 </div>
             </div>
 
-            <div id="video-grid" class="video-grid">
-                <!-- 동영상 목록이 여기에 동적으로 추가됩니다 -->
+            <!-- 결과 패널 -->
+            <div id="results-panel" class="results-panel">
+                <div class="results-header">
+                    <h3>동영상 목록</h3>
+                    <div id="channel-info" class="channel-info" style="display: none;">
+                        <img id="channel-thumbnail" class="channel-thumbnail" alt="채널 썸네일">
+                        <div class="channel-details">
+                            <h4 id="channel-name"></h4>
+                            <p id="channel-stats"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="video-list" class="video-list">
+                    <div class="empty-state">
+                        <h3>🎬</h3>
+                        <p>YouTube URL을 입력하고<br>동영상 목록을 가져와보세요!</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -314,10 +414,10 @@
             }
 
             setLoading(true);
-            showStatus('YouTube 분석 중...', 'loading');
+            showStatus('YouTube 동영상 목록을 가져오는 중...', 'loading');
 
             try {
-                const response = await fetch('/api/youtube/analyze', {
+                const response = await fetch('/api/youtube', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -327,9 +427,9 @@
 
                 const data = await response.json();
 
-                if (response.ok && data) {
+                if (response.ok && data.success) {
                     displayResults(data);
-                    showStatus(`✅ 분석 완료! ${data.videos ? data.videos.length : '0'}개의 동영상을 찾았습니다.`, 'success');
+                    showStatus(`✅ 완료! ${data.totalVideos}개의 동영상을 찾았습니다.`, 'success');
                 } else {
                     throw new Error(data.error || '분석 중 오류가 발생했습니다.');
                 }
@@ -370,13 +470,13 @@
 
             btn.disabled = loading;
             btnText.style.display = loading ? 'none' : 'inline';
-            btnSpinner.style.display = loading ? 'inline-block' : 'none';
+            btnSpinner.style.display = loading ? 'block' : 'none';
         }
 
         // 결과 표시
         function displayResults(data) {
-            const resultsSection = document.getElementById('results-section');
-            const videoGrid = document.getElementById('video-grid');
+            const resultsPanel = document.getElementById('results-panel');
+            const videoList = document.getElementById('video-list');
 
             // 채널 정보 표시
             if (data.channel) {
@@ -386,17 +486,61 @@
             // 비디오 목록 표시
             if (data.videos && data.videos.length > 0) {
                 currentVideos = data.videos;
-                videoGrid.innerHTML = '';
-
-                data.videos.forEach(video => {
-                    const videoCard = createVideoCard(video);
-                    videoGrid.appendChild(videoCard);
-                });
+                applyFilters(); // 필터 적용하여 화면 업데이트
             } else {
-                videoGrid.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">동영상을 찾을 수 없습니다.</p>';
+                videoList.innerHTML = '<div class="empty-state"><h3>😔</h3><p>동영상을 찾을 수 없습니다.</p></div>';
             }
 
-            resultsSection.style.display = 'block';
+            resultsPanel.style.display = 'block';
+        }
+
+        // 필터 적용 함수
+        function applyFilters() {
+            const videoList = document.getElementById('video-list');
+
+            if (!currentVideos || currentVideos.length === 0) {
+                return;
+            }
+
+            // 필터 옵션 가져오기
+            const filterSubtitles = document.getElementById('filter-subtitles').checked;
+            const filterDuration = document.getElementById('filter-duration').checked;
+            const filterTravel = document.getElementById('filter-travel').checked;
+
+            // 필터링 적용
+            let filteredVideos = currentVideos.filter(video => {
+                // 자막 필터
+                if (filterSubtitles && !video.hasSubtitles) {
+                    return false;
+                }
+
+                // 2분 이상 길이 필터
+                if (filterDuration && video.durationInSeconds < 120) {
+                    return false;
+                }
+
+                // 여행 관련 필터
+                if (filterTravel && !video.isTravelRelated) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            // 결과 표시
+            videoList.innerHTML = '';
+
+            if (filteredVideos.length > 0) {
+                filteredVideos.forEach(video => {
+                    const videoItem = createVideoItem(video);
+                    videoList.appendChild(videoItem);
+                });
+            } else {
+                videoList.innerHTML = '<div class="empty-state"><h3>🔍</h3><p>필터 조건에 맞는 동영상이 없습니다.<br>필터 옵션을 조정해보세요.</p></div>';
+            }
+
+            // 상태 메시지 업데이트
+            showStatus(`✅ 필터 적용: ${filteredVideos.length}개의 동영상이 표시됩니다.`, 'success');
         }
 
         // 채널 정보 표시
@@ -417,40 +561,34 @@
             channelInfo.style.display = 'flex';
         }
 
-        // 비디오 카드 생성
-        function createVideoCard(video) {
-            const card = document.createElement('div');
-            card.className = 'video-card';
-            card.onclick = () => selectVideo(video);
+        // 비디오 리스트 아이템 생성
+        function createVideoItem(video) {
+            const item = document.createElement('div');
+            item.className = 'video-item';
+            item.onclick = () => selectVideo(video);
 
-            const thumbnail = video.thumbnail || '/api/placeholder/300/180';
+            const thumbnail = video.thumbnail || '/api/placeholder/80/45';
             const title = video.title || '제목 없음';
+            const channel = video.channelTitle || '채널명 없음';
             const publishedAt = video.publishedAt ? new Date(video.publishedAt).toLocaleDateString('ko-KR') : '';
-            const viewCount = formatNumber(video.viewCount || 0);
-            const duration = video.duration || '';
 
-            card.innerHTML = `
-                <div style="position: relative;">
-                    <img src="${thumbnail}" alt="${title}" class="video-thumbnail">
-                    ${duration ? `<span class="video-duration">${duration}</span>` : ''}
-                </div>
-                <div class="video-info">
+            item.innerHTML = `
+                <img src="${thumbnail}" alt="${title}" class="video-thumbnail">
+                <div class="video-content">
+                    <div class="video-channel">${channel}</div>
                     <div class="video-title">${title}</div>
-                    <div class="video-meta">
-                        <span>조회수 ${viewCount}회</span>
-                        <span>${publishedAt}</span>
-                    </div>
+                    <div class="video-meta">${publishedAt}</div>
                 </div>
             `;
 
-            return card;
+            return item;
         }
 
         // 비디오 선택
         function selectVideo(video) {
-            // 여기에 비디오 선택 시 동작 구현 (다음 단계에서 블로그 생성으로 이동)
             console.log('Selected video:', video);
-            alert(`선택된 동영상: ${video.title}\n\n블로그 생성 기능은 다음 단계에서 구현됩니다.`);
+            showStatus(`선택된 동영상: ${video.title}`, 'success');
+            // 여기에 블로그 생성 기능 추가 예정
         }
 
         // 숫자 포맷팅
@@ -478,6 +616,11 @@
                 document.getElementById('youtube-url').value = url;
                 analyzeYouTube();
             }
+
+            // 필터 체크박스 이벤트 리스너 추가
+            document.getElementById('filter-subtitles').addEventListener('change', applyFilters);
+            document.getElementById('filter-duration').addEventListener('change', applyFilters);
+            document.getElementById('filter-travel').addEventListener('change', applyFilters);
         });
     </script>
 </body>

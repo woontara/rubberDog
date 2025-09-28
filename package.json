@@ -6,11 +6,7 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "build": "webpack --mode production",
-    "build:dev": "webpack --mode development",
-    "watch": "webpack --mode development --watch",
     "test": "jest",
-    "lint": "eslint src/**/*.js",
     "serve": "node server.js"
   },
   "keywords": [
