@@ -50,8 +50,8 @@ module.exports = async function handler(req, res) {
     // 채널 정보 가져오기
     const channelInfo = await getChannelInfo(channelId, apiKeys[0]);
 
-    // 채널의 동영상 목록 가져오기
-    const videos = await getChannelVideos(channelId, apiKeys[0]);
+    // 채널의 동영상 목록 가져오기 (전체)
+    const videos = await getAllChannelVideos(channelId, apiKeys[0], channelInfo?.videoCount || 0);
 
     console.log('✅ 성공:', { channelTitle: channelInfo?.title, videoCount: videos?.length });
 
@@ -199,7 +199,94 @@ async function getChannelInfo(channelId, apiKey) {
   }
 }
 
-// 채널의 동영상 목록 가져오기
+// 채널의 모든 동영상 목록 가져오기 (페이지네이션 사용)
+async function getAllChannelVideos(channelId, apiKey, totalVideoCount) {
+  try {
+    let allVideos = [];
+    let nextPageToken = null;
+    const maxPerPage = 50; // YouTube API 최대값
+    const maxTotalVideos = Math.min(totalVideoCount, 500); // 최대 500개로 제한 (API 할당량 고려)
+
+    console.log(`📊 채널 총 영상 수: ${totalVideoCount}, 가져올 영상 수: ${maxTotalVideos}`);
+
+    do {
+      const pageSize = Math.min(maxPerPage, maxTotalVideos - allVideos.length);
+      if (pageSize <= 0) break;
+
+      let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${pageSize}&key=${apiKey}`;
+      if (nextPageToken) {
+        url += `&pageToken=${nextPageToken}`;
+      }
+
+      console.log(`🔄 페이지 요청: ${allVideos.length + 1}-${allVideos.length + pageSize} / ${maxTotalVideos}`);
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data.items) break;
+
+      // 현재 페이지의 동영상 ID들 수집
+      const videoIds = data.items.map(item => item.id.videoId).join(',');
+
+      // 동영상 세부 정보 가져오기
+      const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
+      const detailsResponse = await fetch(detailsUrl);
+      const detailsData = await detailsResponse.json();
+
+      // 데이터 매핑
+      const pageVideos = data.items.map(item => {
+        const details = detailsData.items?.find(d => d.id === item.id.videoId);
+
+        const duration = details?.contentDetails?.duration;
+        const durationInSeconds = parseDuration(duration);
+        const hasSubtitles = details?.contentDetails?.caption === 'true';
+
+        const travelKeywords = ['여행', '관광', '맛집', 'travel', '호텔', '리조트', '카페', '바다', '산', '도시', '투어', '휴가', '맛있는', '음식', '식당'];
+        const title = item.snippet.title.toLowerCase();
+        const description = item.snippet.description.toLowerCase();
+        const isTravelRelated = travelKeywords.some(keyword =>
+          title.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase())
+        );
+
+        return {
+          id: item.id.videoId,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+          publishedAt: item.snippet.publishedAt,
+          channelTitle: item.snippet.channelTitle,
+          url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+          duration: duration,
+          durationInSeconds: durationInSeconds,
+          hasSubtitles: hasSubtitles,
+          isTravelRelated: isTravelRelated,
+          viewCount: parseInt(details?.statistics?.viewCount || 0)
+        };
+      });
+
+      allVideos = allVideos.concat(pageVideos);
+      nextPageToken = data.nextPageToken;
+
+      console.log(`✅ ${pageVideos.length}개 추가됨, 총 ${allVideos.length}개`);
+
+      // 최대 개수에 도달하면 중단
+      if (allVideos.length >= maxTotalVideos) {
+        console.log(`🎯 최대 개수 도달: ${allVideos.length}개`);
+        break;
+      }
+
+    } while (nextPageToken && allVideos.length < maxTotalVideos);
+
+    console.log(`🏁 완료: 총 ${allVideos.length}개 영상 로드됨`);
+    return allVideos;
+
+  } catch (error) {
+    console.error('모든 동영상 목록 조회 오류:', error);
+    return [];
+  }
+}
+
+// 기존 단일 페이지 동영상 목록 가져오기 함수 (백업용)
 async function getChannelVideos(channelId, apiKey, maxResults = 20) {
   try {
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}&key=${apiKey}`;

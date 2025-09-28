@@ -60,7 +60,8 @@
       "Bash(start https://rubber-6aq0jp6r6-woontaras-projects.vercel.app)",
       "Bash(start https://rubber-49naqddga-woontaras-projects.vercel.app)",
       "Bash(start https://rubber-43lvzvxyn-woontaras-projects.vercel.app)",
-      "Bash(start http://localhost:3001)"
+      "Bash(start http://localhost:3001)",
+      "Bash(start https://rubber-dog.vercel.app/)"
     ],
     "deny": [],
     "ask": []
