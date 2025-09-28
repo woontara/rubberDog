@@ -1,42 +1,60 @@
 // Vercel Serverless Function for YouTube Subtitle Extraction
+const { YoutubeTranscript } = require('youtube-transcript');
 
-// 자막 추출 함수 (Vercel 환경용 - 데모 자막 반환)
+// 실제 YouTube 자막 추출 함수
 async function extractYouTubeSubtitle(videoId) {
-  console.log(`🎬 자막 추출 시작: ${videoId}`);
+  console.log(`🎬 실제 자막 추출 시작: ${videoId}`);
 
-  // Vercel 환경에서는 간단한 데모 자막을 반환합니다
-  const demoSubtitles = {
-    'dQw4w9WgXcQ': `[00:01] We're no strangers to love
-[00:05] You know the rules and so do I
-[00:09] A full commitment's what I'm thinking of
-[00:13] You wouldn't get this from any other guy
-[00:17] I just wanna tell you how I'm feeling
-[00:21] Gotta make you understand
-[00:24] Never gonna give you up
-[00:26] Never gonna let you down`,
-    default: `[00:00] 이 영상의 자막을 추출했습니다.
-[00:05] YouTube ID: ${videoId}
-[00:10] 자막 추출이 성공적으로 완료되었습니다.
-[00:15] Vercel 환경에서 정상 작동 중입니다.
-[00:20] 실제 자막 추출 기능이 구현되었습니다.`
-  };
+  try {
+    // YouTube Transcript API를 사용하여 실제 자막 추출
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId, {
+      lang: 'ko', // 한국어 우선
+      country: 'KR'
+    });
 
-  // 1초 대기 (실제 처리 시뮬레이션)
-  await new Promise(resolve => setTimeout(resolve, 1000));
+    // 자막 텍스트 포맷팅
+    let subtitleText = '';
+    transcript.forEach(entry => {
+      const startTime = Math.floor(entry.offset / 1000);
+      const minutes = Math.floor(startTime / 60);
+      const seconds = startTime % 60;
+      const timestamp = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
 
-  const subtitle = demoSubtitles[videoId] || demoSubtitles.default;
+      if (entry.text && entry.text.trim()) {
+        subtitleText += `${timestamp} ${entry.text.trim()}\n`;
+      }
+    });
 
-  console.log(`📝 자막 추출 결과: 성공`);
+    console.log(`📝 실제 자막 추출 성공: ${videoId}`);
 
-  return {
-    success: true,
-    subtitle: subtitle,
-    language: 'Korean',
-    language_code: 'ko',
-    is_generated: true,
-    video_id: videoId,
-    note: 'Vercel 환경에서 데모 자막을 반환했습니다.'
-  };
+    return {
+      success: true,
+      subtitle: subtitleText.trim(),
+      language: 'Korean',
+      language_code: 'ko',
+      is_generated: false,
+      video_id: videoId,
+      note: '실제 YouTube 자막을 성공적으로 추출했습니다.'
+    };
+
+  } catch (error) {
+    console.error(`❌ 자막 추출 실패: ${videoId}`, error.message);
+
+    // 에러 발생 시 사용자 친화적 메시지 반환
+    let errorMessage = '자막 추출 중 오류가 발생했습니다.';
+
+    if (error.message.includes('No transcripts found') || error.message.includes('Could not retrieve')) {
+      errorMessage = '이 영상에는 자막이 없습니다.';
+    } else if (error.message.includes('Video unavailable') || error.message.includes('not available')) {
+      errorMessage = '영상을 찾을 수 없거나 접근할 수 없습니다.';
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+      video_id: videoId
+    };
+  }
 }
 
 // Vercel 서버리스 함수
