@@ -959,7 +959,44 @@
                         if (data.success && data.subtitle) {
                             console.log(`✅ 자막 추출 성공: ${video.title}`);
                         } else {
-                            console.log(`❌ 자막 추출 실패: ${video.title} - ${data.error || '자막을 찾을 수 없습니다'}`);
+                            console.log(`❌ 기본 자막 추출 실패: ${video.title} - ${data.error || '자막을 찾을 수 없습니다'}`);
+
+                            // 기본 방식 실패 시 yt-dlp API 시도
+                            console.log(`🔄 yt-dlp 방식으로 재시도: ${video.title}`);
+                            try {
+                                const ytdlpResponse = await fetch('/api/youtube/subtitle-ytdlp', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        videoId: video.id,
+                                        title: video.title
+                                    })
+                                });
+
+                                const ytdlpData = await ytdlpResponse.json();
+
+                                // yt-dlp 결과로 기존 데이터 업데이트
+                                if (ytdlpData.success && ytdlpData.subtitle) {
+                                    extractedSubtitles[extractedSubtitles.length - 1] = {
+                                        videoId: video.id,
+                                        title: video.title,
+                                        subtitle: ytdlpData.subtitle,
+                                        success: true,
+                                        error: null,
+                                        message: `yt-dlp 방식으로 성공 (${ytdlpData.method})`,
+                                        available_languages: ytdlpData.available_languages || [],
+                                        timestamp: new Date().toISOString(),
+                                        method: ytdlpData.method
+                                    };
+                                    console.log(`🎉 yt-dlp 자막 추출 성공: ${video.title}`);
+                                } else {
+                                    console.log(`❌ yt-dlp도 실패: ${video.title} - ${ytdlpData.error || ytdlpData.message}`);
+                                }
+                            } catch (ytdlpError) {
+                                console.error(`❌ yt-dlp API 오류: ${video.title}`, ytdlpError);
+                            }
                         }
                     } catch (error) {
                         console.error(`❌ 자막 추출 오류: ${video.title}`, error);
