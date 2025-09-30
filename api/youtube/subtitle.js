@@ -3,101 +3,378 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-// JavaScript 폴백을 위한 youtube-transcript 라이브러리
+// JavaScript 폴백을 위한 라이브러리들
 let YoutubeTranscript;
+let ytdl;
+let fetch;
+let Innertube;
+let playwright;
+
 try {
   YoutubeTranscript = require('youtube-transcript').YoutubeTranscript;
+  ytdl = require('@distube/ytdl-core');
+  fetch = require('node-fetch');
+  const { Innertube: InnertubeClass } = require('youtubei.js');
+  playwright = require('playwright');
+  Innertube = InnertubeClass;
+  console.log('✅ 모든 JavaScript 라이브러리 로드 완료 (Innertube + Playwright 포함)');
 } catch (e) {
-  console.log('youtube-transcript 라이브러리를 찾을 수 없음, Python만 사용');
+  console.log('⚠️ 일부 JavaScript 라이브러리 로드 실패:', e.message);
 }
 
-// JavaScript로 자막 추출 (Vercel 환경용) - 다중 언어 시도
+// JavaScript로 자막 추출 (강력한 5단계 방법)
 async function extractSubtitleWithJS(videoId) {
-  try {
-    console.log('🔧 API: JavaScript로 자막 추출 시작:', videoId);
+  console.log('🚀 강력한 JavaScript 자막 추출 시작:', videoId);
 
-    if (!YoutubeTranscript) {
-      throw new Error('youtube-transcript 라이브러리가 설치되지 않음');
-    }
+  // 방법 -1: Playwright 브라우저 자동화로 실제 브라우저처럼 접근
+  if (playwright) {
+    try {
+      console.log('🎯 방법 -1: Playwright 브라우저 자동화 시도');
 
-    // 시도할 언어 옵션들 (순서대로 시도)
-    const languageOptions = [
-      { lang: 'ko', country: 'KR' }, // 한국어 + 국가 코드
-      { lang: 'ko' },                // 한국어만
-      { lang: 'en' },                // 영어
-      { lang: 'ja' },                // 일본어
-      { lang: 'zh' },                // 중국어
-      {},                            // 기본 옵션 (자동 감지)
-    ];
+      const browser = await playwright.chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      });
+      const page = await context.newPage();
 
-    let lastError = null;
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // 각 언어 옵션을 순차적으로 시도
-    for (const option of languageOptions) {
+      console.log('🌐 Playwright: YouTube 페이지 로딩 중...');
+      await page.goto(videoUrl, { waitUntil: 'networkidle' });
+
+      // 쿠키 동의 처리
       try {
-        console.log('🌐 API: 언어 옵션 시도:', JSON.stringify(option));
+        await page.click('[aria-label="Accept all"], button:has-text("Accept all"), button:has-text("모두 허용")', { timeout: 3000 });
+      } catch (e) {
+        console.log('🍪 쿠키 동의 버튼 없음 또는 이미 처리됨');
+      }
 
-        const transcript = await YoutubeTranscript.fetchTranscript(videoId, option);
+      // 자막 버튼 클릭
+      console.log('🎬 Playwright: 자막 활성화 시도');
+      await page.waitForSelector('video', { timeout: 10000 });
 
-        if (transcript && transcript.length > 0) {
-          console.log('✅ API: 자막 추출 성공, 자막 수:', transcript.length);
+      // 자막 버튼 찾기 및 클릭
+      try {
+        await page.click('button[aria-label*="Subtitles"], button[aria-label*="자막"], .ytp-subtitles-button', { timeout: 5000 });
+        console.log('✅ Playwright: 자막 버튼 클릭 성공');
+      } catch (e) {
+        console.log('⚠️ Playwright: 자막 버튼을 찾을 수 없음');
+      }
 
-          // 자막을 시간 포맷으로 변환
-          const formattedSubtitle = transcript.map(item => {
-            const minutes = Math.floor(item.offset / 60000);
-            const seconds = Math.floor((item.offset % 60000) / 1000);
-            const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
-            return `${timeStr} ${item.text}`;
+      // 잠시 대기 후 자막 텍스트 수집
+      await page.waitForTimeout(3000);
+
+      // 페이지에서 자막 관련 데이터 추출
+      const subtitleData = await page.evaluate(() => {
+        // 자막 DOM 요소들 찾기
+        const captionElements = document.querySelectorAll('.caption-window, .ytp-caption-segment, .captions-text, [class*="caption"], [class*="subtitle"]');
+
+        if (captionElements.length > 0) {
+          return Array.from(captionElements).map(el => el.textContent.trim()).filter(text => text);
+        }
+
+        // 네트워크 요청에서 자막 URL 찾기 (더 고급 방법)
+        const scripts = document.querySelectorAll('script');
+        for (let script of scripts) {
+          if (script.textContent && script.textContent.includes('captionTracks')) {
+            try {
+              const match = script.textContent.match(/"captionTracks":\s*(\[.*?\])/);
+              if (match) {
+                const tracks = JSON.parse(match[1]);
+                return { captionTracks: tracks };
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+
+        return null;
+      });
+
+      await browser.close();
+
+      if (subtitleData) {
+        if (Array.isArray(subtitleData)) {
+          console.log('🎉 Playwright 방법으로 DOM 자막 추출 성공!');
+          const formattedSubtitle = subtitleData.map((text, index) => {
+            const timeStr = `[${Math.floor(index * 3 / 60).toString().padStart(2, '0')}:${(index * 3 % 60).toString().padStart(2, '0')}]`;
+            return `${timeStr} ${text}`;
           }).join('\n');
 
           return {
             success: true,
             subtitle: formattedSubtitle,
-            language: option.lang || 'auto-detected',
-            language_code: option.lang || 'auto',
+            language: 'auto-detected',
+            language_code: 'auto',
             is_generated: true,
             video_id: videoId,
-            method: 'javascript-youtube-transcript',
-            language_option: JSON.stringify(option)
+            method: 'playwright-dom-extraction'
           };
+        } else if (subtitleData.captionTracks) {
+          console.log('🎉 Playwright 방법으로 자막 트랙 발견!');
+
+          // 한국어 우선 검색
+          let track = subtitleData.captionTracks.find(t =>
+            t.languageCode === 'ko' || t.languageCode === 'ko-KR'
+          );
+
+          if (!track) {
+            track = subtitleData.captionTracks[0];
+          }
+
+          if (track && track.baseUrl) {
+            try {
+              const response = await fetch(track.baseUrl);
+              const xmlData = await response.text();
+              const subtitleText = parseXMLSubtitles(xmlData);
+
+              if (subtitleText) {
+                return {
+                  success: true,
+                  subtitle: subtitleText,
+                  language: track.name?.simpleText || 'Unknown',
+                  language_code: track.languageCode,
+                  is_generated: track.kind === 'asr',
+                  video_id: videoId,
+                  method: 'playwright-caption-tracks'
+                };
+              }
+            } catch (e) {
+              console.log('⚠️ Playwright: 자막 URL 페치 실패:', e.message);
+            }
+          }
         }
-      } catch (error) {
-        console.log(`⚠️ API: 언어 옵션 ${JSON.stringify(option)} 실패:`, error.message);
-        lastError = error;
-        continue; // 다음 옵션 시도
+      }
+
+    } catch (error) {
+      console.log('⚠️ Playwright 방법 실패:', error.message);
+    }
+  }
+
+  // 방법 0: youtubei.js (Innertube)로 YouTube 내부 API 직접 접근
+  if (Innertube) {
+    try {
+      console.log('🎯 방법 0: youtubei.js Innertube 내부 API 시도');
+
+      const yt = await Innertube.create();
+      const info = await yt.getInfo(videoId);
+
+      if (info.captions && info.captions.caption_tracks) {
+        console.log('✅ Innertube: 자막 트랙 발견:', info.captions.caption_tracks.length);
+
+        // 한국어 자막 우선 검색
+        let caption = info.captions.caption_tracks.find(track =>
+          track.language_code === 'ko' || track.language_code === 'ko-KR'
+        );
+
+        // 한국어가 없으면 첫 번째 자막
+        if (!caption) {
+          caption = info.captions.caption_tracks[0];
+        }
+
+        if (caption) {
+          console.log('🌐 Innertube 자막 트랙 발견:', caption.language_code);
+
+          const transcript = await caption.fetch();
+          if (transcript && transcript.length > 0) {
+            console.log('🎉 Innertube 방법으로 자막 추출 성공!');
+
+            const formattedSubtitle = transcript.map(item => {
+              const startTime = Math.floor(item.start_time / 1000);
+              const minutes = Math.floor(startTime / 60);
+              const seconds = startTime % 60;
+              const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+              return `${timeStr} ${item.text}`;
+            }).join('\n');
+
+            return {
+              success: true,
+              subtitle: formattedSubtitle,
+              language: caption.name || 'Unknown',
+              language_code: caption.language_code,
+              is_generated: caption.kind === 'asr',
+              video_id: videoId,
+              method: 'youtubei-js-innertube'
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ youtubei.js Innertube 방법 실패:', error.message);
+    }
+  }
+
+  // 방법 1: ytdl-core로 직접 자막 API 접근
+  if (ytdl && fetch) {
+    try {
+      console.log('🎯 방법 1: ytdl-core 직접 자막 추출 시도');
+
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const info = await ytdl.getInfo(videoUrl);
+
+      if (info.player_response && info.player_response.captions) {
+        const captions = info.player_response.captions.playerCaptionsTracklistRenderer;
+
+        if (captions && captions.captionTracks) {
+          console.log('✅ ytdl-core: 자막 트랙 발견:', captions.captionTracks.length);
+
+          // 한국어 자막 우선 검색
+          let captionTrack = captions.captionTracks.find(track =>
+            track.languageCode === 'ko' || track.languageCode === 'ko-KR'
+          );
+
+          // 한국어가 없으면 다른 언어
+          if (!captionTrack) {
+            captionTrack = captions.captionTracks[0];
+          }
+
+          if (captionTrack && captionTrack.baseUrl) {
+            console.log('🌐 자막 URL 발견:', captionTrack.languageCode);
+
+            // 자막 URL에서 직접 다운로드
+            const response = await fetch(captionTrack.baseUrl);
+            const xmlData = await response.text();
+
+            // XML 파싱
+            const subtitleText = parseXMLSubtitles(xmlData);
+
+            if (subtitleText) {
+              console.log('🎉 ytdl-core 방법으로 자막 추출 성공!');
+              return {
+                success: true,
+                subtitle: subtitleText,
+                language: captionTrack.name ? captionTrack.name.simpleText : 'Unknown',
+                language_code: captionTrack.languageCode,
+                is_generated: captionTrack.kind === 'asr',
+                video_id: videoId,
+                method: 'ytdl-core-direct-api'
+              };
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ ytdl-core 방법 실패:', error.message);
+    }
+  }
+
+  // 방법 2: youtube-transcript 다중 언어 시도
+  if (YoutubeTranscript) {
+    try {
+      console.log('🎯 방법 2: youtube-transcript 다중 언어 시도');
+
+      const languageOptions = [
+        { lang: 'ko', country: 'KR' },
+        { lang: 'ko' },
+        { lang: 'en' },
+        { lang: 'ja' },
+        { lang: 'zh' },
+        { lang: 'es' },
+        { lang: 'fr' },
+        { lang: 'de' },
+        {}  // 기본 옵션
+      ];
+
+      for (const option of languageOptions) {
+        try {
+          console.log(`🌐 언어 옵션 시도: ${JSON.stringify(option)}`);
+
+          const transcript = await YoutubeTranscript.fetchTranscript(videoId, option);
+
+          if (transcript && transcript.length > 0) {
+            console.log('🎉 youtube-transcript 방법으로 자막 추출 성공!');
+
+            const formattedSubtitle = transcript.map(item => {
+              const minutes = Math.floor(item.offset / 60000);
+              const seconds = Math.floor((item.offset % 60000) / 1000);
+              const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+              return `${timeStr} ${item.text}`;
+            }).join('\n');
+
+            return {
+              success: true,
+              subtitle: formattedSubtitle,
+              language: option.lang || 'auto-detected',
+              language_code: option.lang || 'auto',
+              is_generated: true,
+              video_id: videoId,
+              method: 'youtube-transcript-multi',
+              language_option: JSON.stringify(option)
+            };
+          }
+        } catch (error) {
+          console.log(`⚠️ 언어 옵션 ${JSON.stringify(option)} 실패:`, error.message);
+          continue;
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ youtube-transcript 방법 실패:', error.message);
+    }
+  }
+
+  // 방법 3: ytdl-core 기본 정보로 분석
+  if (ytdl) {
+    try {
+      console.log('🎯 방법 3: ytdl-core 기본 정보 분석');
+
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const basicInfo = await ytdl.getBasicInfo(videoUrl);
+
+      console.log('📊 비디오 정보:', {
+        title: basicInfo.videoDetails.title,
+        author: basicInfo.videoDetails.author.name,
+        lengthSeconds: basicInfo.videoDetails.lengthSeconds
+      });
+
+    } catch (error) {
+      console.log('⚠️ ytdl-core 기본 정보 분석 실패:', error.message);
+    }
+  }
+
+  // 모든 방법 실패
+  console.error('❌ 모든 JavaScript 방법 실패');
+  return {
+    success: false,
+    error: 'ALL_JS_METHODS_FAILED',
+    message: '모든 JavaScript 자막 추출 방법이 실패했습니다. 이 영상은 자막이 없거나 접근이 제한되어 있습니다.',
+    video_id: videoId,
+    attempted_methods: ['youtubei-js-innertube', 'ytdl-core-direct', 'youtube-transcript-multi', 'ytdl-core-basic']
+  };
+}
+
+// XML 자막 파싱 함수
+function parseXMLSubtitles(xmlData) {
+  try {
+    const textRegex = /<text[^>]*start="([^"]*)"[^>]*>(.*?)<\/text>/g;
+    const subtitles = [];
+    let match;
+
+    while ((match = textRegex.exec(xmlData)) !== null) {
+      const startTime = parseFloat(match[1]);
+      const text = match[2]
+        .replace(/<[^>]*>/g, '') // HTML 태그 제거
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .trim();
+
+      if (text) {
+        const minutes = Math.floor(startTime / 60);
+        const seconds = Math.floor(startTime % 60);
+        const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+        subtitles.push(`${timeStr} ${text}`);
       }
     }
 
-    // 모든 옵션이 실패한 경우
-    throw lastError || new Error('모든 언어 옵션 실패');
-
+    return subtitles.length > 0 ? subtitles.join('\n') : null;
   } catch (error) {
-    console.error('API: JavaScript 자막 추출 실패:', error.message);
-
-    // 더 자세한 오류 분석
-    let errorCode = 'JS_EXTRACTION_FAILED';
-    let userMessage = 'JavaScript 자막 추출 실패';
-
-    if (error.message.includes('Transcript is disabled')) {
-      errorCode = 'TRANSCRIPT_DISABLED';
-      userMessage = '이 영상의 자막이 비활성화되어 있습니다';
-    } else if (error.message.includes('No transcripts found')) {
-      errorCode = 'NO_TRANSCRIPTS';
-      userMessage = '이 영상에 사용 가능한 자막이 없습니다';
-    } else if (error.message.includes('Video unavailable')) {
-      errorCode = 'VIDEO_UNAVAILABLE';
-      userMessage = '영상을 찾을 수 없습니다';
-    } else if (error.message.includes('Could not extract')) {
-      errorCode = 'EXTRACTION_ERROR';
-      userMessage = 'YouTube 보안 정책으로 인해 자막 추출이 제한되었습니다';
-    }
-
-    return {
-      success: false,
-      error: errorCode,
-      message: `${userMessage}: ${error.message}`,
-      video_id: videoId
-    };
+    console.error('XML 파싱 오류:', error);
+    return null;
   }
 }
 

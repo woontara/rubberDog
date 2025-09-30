@@ -825,6 +825,93 @@ function handleApiRequest(req, res, pathname) {
       message: 'GET method is not allowed. Use POST method.'
     }));
 
+  // yt-dlp 자막 추출
+  } else if (pathname === '/api/youtube/subtitle-ytdlp' && req.method === 'POST') {
+    console.log('🌐 웹 앱에서 yt-dlp 자막 추출 요청 받음:', pathname);
+    let body = '';
+
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { videoId, title } = data;
+        console.log('📝 yt-dlp 받은 데이터:', { videoId, title });
+
+        if (!videoId) {
+          console.log('❌ videoId가 없음');
+          res.writeHead(400, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({ error: 'videoId is required' }));
+          return;
+        }
+
+        console.log('🎬 웹 앱 → yt-dlp 자막 추출 시작:', videoId);
+
+        // yt-dlp API 모듈 로드
+        try {
+          const ytdlpAPI = require('../api/youtube/subtitle_ytdlp.js');
+
+          // mock request/response 객체 생성
+          const mockReq = {
+            method: 'POST',
+            body: { videoId, title }
+          };
+
+          const mockRes = {
+            statusCode: 200,
+            headers: {},
+            setHeader: function(key, value) {
+              this.headers[key] = value;
+            },
+            status: function(code) {
+              this.statusCode = code;
+              return this;
+            },
+            json: function(data) {
+              res.writeHead(this.statusCode, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                ...this.headers
+              });
+              res.end(JSON.stringify(data));
+            },
+            end: function() {
+              res.writeHead(this.statusCode, this.headers);
+              res.end();
+            }
+          };
+
+          // yt-dlp API 호출
+          await ytdlpAPI(mockReq, mockRes);
+
+        } catch (error) {
+          console.log('❌ 웹 앱 → yt-dlp 자막 추출 오류:', error.message);
+          res.writeHead(500, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'SERVER_ERROR',
+            message: error.message
+          }));
+        }
+
+      } catch (e) {
+        console.log('❌ 웹 앱 → JSON 파싱 오류:', e.message);
+        res.writeHead(400, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+
   // 블로그 생성
   } else if (pathname === '/api/blog/generate' && req.method === 'POST') {
     console.log('블로그 생성 요청 받음:', pathname);

@@ -77,7 +77,12 @@
       "Bash(NODE_ENV=production curl -X POST http://localhost:3001/api/youtube/subtitle -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"vOLXGEt3C-A\"\", \"\"title\"\": \"\"Test\"\"}\")",
       "Bash(VERCEL=1 curl -X POST http://localhost:3001/api/youtube/subtitle -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"vOLXGEt3C-A\"\", \"\"title\"\": \"\"Test\"\"}\")",
       "WebFetch(domain:rubber-kfzorxd9w-woontaras-projects.vercel.app)",
-      "Bash(start https://rubber-dog.vercel.app)"
+      "Bash(start https://rubber-dog.vercel.app)",
+      "Bash(TASKKILL /F /PID 28444)",
+      "Bash(VERCEL=1 curl -X POST http://localhost:3001/api/youtube/subtitle-ytdlp -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"dQw4w9WgXcQ\"\", \"\"title\"\": \"\"Never Gonna Give You Up\"\"}\")",
+      "Bash(VERCEL=1 curl -X POST http://localhost:3001/api/youtube/subtitle-ytdlp -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"M7lc1UVf-VE\"\", \"\"title\"\": \"\"Test Video with subtitles\"\"}\")",
+      "Bash(NODE_ENV=production curl -X POST http://localhost:3001/api/youtube/subtitle-ytdlp -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"M7lc1UVf-VE\"\", \"\"title\"\": \"\"Test Video with subtitles\"\"}\")",
+      "Bash(VERCEL=1 npm start)"
     ],
     "deny": [],
     "ask": []

@@ -11,6 +11,10 @@
     {
       "src": "/api/youtube/subtitle-advanced",
       "dest": "/api/youtube/subtitle_ytdlp.js"
+    },
+    {
+      "src": "/api/youtube/subtitle-ytdlp",
+      "dest": "/api/youtube/subtitle_ytdlp.js"
     }
   ]
 }
