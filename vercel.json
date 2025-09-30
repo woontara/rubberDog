@@ -15,6 +15,26 @@
     {
       "src": "/api/youtube/subtitle-ytdlp",
       "dest": "/api/youtube/subtitle_ytdlp.js"
+    },
+    {
+      "src": "/api/youtube/subtitle-local",
+      "dest": "/api/youtube/subtitle_local.js"
+    },
+    {
+      "src": "/api/youtube/subtitle-upload",
+      "dest": "/api/youtube/subtitle_upload_mongodb.js"
+    },
+    {
+      "src": "/api/youtube/subtitle-upload-mongodb",
+      "dest": "/api/youtube/subtitle_upload_mongodb.js"
+    },
+    {
+      "src": "/api/youtube/debug-subtitle",
+      "dest": "/api/youtube/debug_subtitle.js"
+    },
+    {
+      "src": "/api/youtube/subtitle-upload-local",
+      "dest": "/api/youtube/subtitle_upload_local.js"
     }
   ]
 }

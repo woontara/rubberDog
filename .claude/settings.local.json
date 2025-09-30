@@ -82,7 +82,19 @@
       "Bash(VERCEL=1 curl -X POST http://localhost:3001/api/youtube/subtitle-ytdlp -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"dQw4w9WgXcQ\"\", \"\"title\"\": \"\"Never Gonna Give You Up\"\"}\")",
       "Bash(VERCEL=1 curl -X POST http://localhost:3001/api/youtube/subtitle-ytdlp -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"M7lc1UVf-VE\"\", \"\"title\"\": \"\"Test Video with subtitles\"\"}\")",
       "Bash(NODE_ENV=production curl -X POST http://localhost:3001/api/youtube/subtitle-ytdlp -H \"Content-Type: application/json\" -d \"{\"\"videoId\"\": \"\"M7lc1UVf-VE\"\", \"\"title\"\": \"\"Test Video with subtitles\"\"}\")",
-      "Bash(VERCEL=1 npm start)"
+      "Bash(VERCEL=1 npm start)",
+      "Bash(TASKKILL /F /PID 21972)",
+      "WebFetch(domain:rubber-eun0nia2o-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-eun0nia2o-woontaras-projects.vercel.app)",
+      "WebFetch(domain:rubber-c20p7izde-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-7nbxglil5-woontaras-projects.vercel.app)",
+      "WebFetch(domain:rubber-jtjcwg14j-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-hdshsriv7-woontaras-projects.vercel.app)",
+      "WebFetch(domain:rubber-9assbvrco-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-9assbvrco-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-o2frs5is8-woontaras-projects.vercel.app)",
+      "Bash(start https://rubber-ktqbjn7oi-woontaras-projects.vercel.app)",
+      "Bash(VERCEL=1 node server.js)"
     ],
     "deny": [],
     "ask": []

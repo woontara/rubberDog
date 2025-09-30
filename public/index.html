@@ -76,7 +76,7 @@
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            height: fit-content;
+            height: calc(100vh - 200px);
         }
 
         .input-group {
@@ -300,6 +300,16 @@
             margin-bottom: 8px;
         }
 
+        .error-suggestion {
+            color: #856404;
+            background-color: #fff3cd;
+            padding: 8px;
+            margin-top: 8px;
+            border-radius: 4px;
+            border: 1px solid #ffeaa7;
+            font-size: 14px;
+        }
+
         .available-languages {
             color: #856404;
             background-color: #fff3cd;
@@ -475,6 +485,55 @@
             opacity: 0.6;
         }
 
+        /* 로컬 자막 추출 버튼 */
+        .btn-extract-local {
+            padding: 4px 10px;
+            border: 1px solid #28a745;
+            background-color: #28a745;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+            margin-right: 5px;
+        }
+
+        .btn-extract-local:hover:not(:disabled) {
+            background-color: #218838;
+            border-color: #218838;
+        }
+
+        .btn-extract-local:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* 베셀 자막 추출 버튼 */
+        .btn-extract-vercel {
+            padding: 4px 10px;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+        }
+
+        .btn-extract-vercel:hover:not(:disabled) {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .btn-extract-vercel:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         .selection-info {
             font-size: 0.85em;
             color: #666;
@@ -568,7 +627,7 @@
                             <div class="selection-buttons">
                                 <button class="btn-select" onclick="toggleAllVideos(true)">전체 선택</button>
                                 <button class="btn-select" onclick="toggleAllVideos(false)">전체 해제</button>
-                                <button class="btn-extract" onclick="extractSubtitles()" id="extract-btn" disabled>자막추출</button>
+                                <button class="btn-extract" onclick="extractAndLoadSubtitles()" id="extract-btn-unified" disabled>자막추출</button>
                             </div>
                             <div class="selection-info" id="selection-info">선택된 동영상: 0개</div>
                         </div>
@@ -867,9 +926,11 @@
                 selectionInfo.textContent = `선택된 동영상: ${selectedVideos.length}개`;
             }
 
-            // 자막추출 버튼 활성화/비활성화
-            if (extractBtn) {
-                extractBtn.disabled = selectedVideos.length === 0;
+            // 자막추출 버튼들 활성화/비활성화
+            const extractBtnUnified = document.getElementById('extract-btn-unified');
+            // 통합 자막추출 버튼: 항상 활성화 (선택된 동영상이 없으면 저장된 자막 불러오기)
+            if (extractBtnUnified) {
+                extractBtnUnified.disabled = false;
             }
 
             console.log('Selected videos:', selectedVideos.length);
@@ -907,27 +968,30 @@
         // 자막 데이터 저장
         let extractedSubtitles = [];
 
-        // 자막 추출 함수
-        async function extractSubtitles() {
+        // 통합 자막 추출 및 불러오기 함수
+        async function extractAndLoadSubtitles() {
             if (selectedVideos.length === 0) {
-                showStatus('선택된 동영상이 없습니다.', 'error');
+                // 선택된 동영상이 없으면 D드라이브에서 저장된 자막 불러오기
+                await loadSubtitlesFromLocal();
                 return;
             }
 
-            const extractBtn = document.getElementById('extract-btn');
+            const extractBtn = document.getElementById('extract-btn-unified');
             const originalText = extractBtn.textContent;
             extractBtn.disabled = true;
-            extractBtn.textContent = '추출 중...';
+            extractBtn.textContent = '자막 추출 중...';
 
             showStatus(`${selectedVideos.length}개 동영상의 자막을 추출하고 있습니다...`, 'info');
 
             try {
                 for (let i = 0; i < selectedVideos.length; i++) {
                     const video = selectedVideos[i];
-                    extractBtn.textContent = `추출 중... (${i + 1}/${selectedVideos.length})`;
+                    extractBtn.textContent = `자막 추출 중... (${i + 1}/${selectedVideos.length})`;
 
                     try {
-                        const response = await fetch('/api/youtube/subtitle', {
+                        // yt-dlp 통합 방식으로 자막 추출 (베셀에서 웹 API 사용)
+                        console.log(`🎯 yt-dlp로 자막 추출 시작: ${video.title}`);
+                        const response = await fetch('/api/youtube/subtitle-ytdlp', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -940,6 +1004,29 @@
 
                         const data = await response.json();
 
+                        if (data.success && data.subtitle) {
+                            // 성공한 경우 D드라이브에 로컬 저장
+                            console.log(`📤 D드라이브로 자막 저장 시작: ${video.title}`);
+                            const uploadResponse = await fetch('/api/youtube/subtitle-upload-local', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    videoId: video.id,
+                                    subtitle: data.subtitle,
+                                    language: data.language,
+                                    language_code: data.language_code,
+                                    format: data.format,
+                                    method: 'hybrid-web-to-local',
+                                    file_downloaded: data.file_downloaded
+                                })
+                            });
+
+                            const uploadData = await uploadResponse.json();
+                            console.log(`✅ D드라이브 저장 완료: ${video.title}`, uploadData.success ? '성공' : '실패');
+                        }
+
                         // 자막 데이터 저장 (성공/실패 모두)
                         const subtitleData = {
                             videoId: video.id,
@@ -947,9 +1034,11 @@
                             subtitle: data.subtitle,
                             success: data.success,
                             error: data.error,
-                            message: data.message,
-                            available_languages: data.api_result?.available_languages || [],
-                            timestamp: new Date().toISOString()
+                            message: data.message || (data.success ? `yt-dlp로 성공 (${data.method})` : '자막 추출 실패'),
+                            timestamp: new Date().toISOString(),
+                            method: data.method || 'yt-dlp-web-api',
+                            language_code: data.language_code,
+                            format: data.format
                         };
 
                         // 기존 자막 제거 (중복 방지)
@@ -957,46 +1046,9 @@
                         extractedSubtitles.push(subtitleData);
 
                         if (data.success && data.subtitle) {
-                            console.log(`✅ 자막 추출 성공: ${video.title}`);
+                            console.log(`✅ 자막 추출 성공: ${video.title} (${data.method})`);
                         } else {
-                            console.log(`❌ 기본 자막 추출 실패: ${video.title} - ${data.error || '자막을 찾을 수 없습니다'}`);
-
-                            // 기본 방식 실패 시 yt-dlp API 시도
-                            console.log(`🔄 yt-dlp 방식으로 재시도: ${video.title}`);
-                            try {
-                                const ytdlpResponse = await fetch('/api/youtube/subtitle-ytdlp', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        videoId: video.id,
-                                        title: video.title
-                                    })
-                                });
-
-                                const ytdlpData = await ytdlpResponse.json();
-
-                                // yt-dlp 결과로 기존 데이터 업데이트
-                                if (ytdlpData.success && ytdlpData.subtitle) {
-                                    extractedSubtitles[extractedSubtitles.length - 1] = {
-                                        videoId: video.id,
-                                        title: video.title,
-                                        subtitle: ytdlpData.subtitle,
-                                        success: true,
-                                        error: null,
-                                        message: `yt-dlp 방식으로 성공 (${ytdlpData.method})`,
-                                        available_languages: ytdlpData.available_languages || [],
-                                        timestamp: new Date().toISOString(),
-                                        method: ytdlpData.method
-                                    };
-                                    console.log(`🎉 yt-dlp 자막 추출 성공: ${video.title}`);
-                                } else {
-                                    console.log(`❌ yt-dlp도 실패: ${video.title} - ${ytdlpData.error || ytdlpData.message}`);
-                                }
-                            } catch (ytdlpError) {
-                                console.error(`❌ yt-dlp API 오류: ${video.title}`, ytdlpError);
-                            }
+                            console.log(`❌ 자막 추출 실패: ${video.title} - ${data.error || data.message}`);
                         }
                     } catch (error) {
                         console.error(`❌ 자막 추출 오류: ${video.title}`, error);
@@ -1005,7 +1057,12 @@
 
                 // 자막 목록 업데이트
                 displaySubtitles();
-                showStatus(`자막 추출 완료: ${extractedSubtitles.length}개`, 'success');
+
+                // D드라이브에서 저장된 자막도 함께 불러오기
+                extractBtn.textContent = '저장된 자막 불러오는 중...';
+                await loadSubtitlesFromLocal();
+
+                showStatus(`자막 추출 및 불러오기 완료: ${extractedSubtitles.length}개`, 'success');
 
             } catch (error) {
                 console.error('자막 추출 중 오류:', error);
@@ -1013,6 +1070,51 @@
             } finally {
                 extractBtn.disabled = false;
                 extractBtn.textContent = originalText;
+            }
+        }
+
+
+        // D드라이브에서 저장된 자막 목록 조회
+        async function loadSubtitlesFromLocal() {
+            try {
+                console.log('📦 D드라이브에서 저장된 자막 목록 조회 중...');
+                const response = await fetch('/api/youtube/subtitle-upload-local', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    console.log(`✅ D드라이브에서 ${data.count}개의 자막 조회 완료`);
+
+                    // D드라이브 데이터를 extractedSubtitles 형태로 변환
+                    extractedSubtitles = data.data.map(item => ({
+                        videoId: item.video_id,
+                        title: `비디오 ID: ${item.video_id}`,
+                        subtitle: item.subtitle,
+                        success: true,
+                        error: null,
+                        message: `D드라이브에서 조회 (${item.method})`,
+                        timestamp: item.uploaded_at,
+                        method: item.method,
+                        language_code: item.language_code,
+                        format: item.format,
+                        source: 'mongodb'
+                    }));
+
+                    // 자막 목록 표시 업데이트
+                    displaySubtitles();
+                    showStatus(`D드라이브에서 ${data.count}개의 저장된 자막을 불러왔습니다.`, 'success');
+                } else {
+                    console.log('❌ D드라이브 자막 조회 실패:', data.error || data.message);
+                    showStatus('저장된 자막을 불러오는데 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('❌ D드라이브 자막 조회 오류:', error);
+                showStatus('저장된 자막을 불러오는데 오류가 발생했습니다.', 'error');
             }
         }
 
@@ -1046,6 +1148,11 @@
                     content += `
                         <div class="subtitle-error">
                             <div class="error-message">❌ ${item.message || item.error || '자막 추출 실패'}</div>
+                            ${item.suggestion ? `
+                                <div class="error-suggestion">
+                                    💡 ${item.suggestion}
+                                </div>
+                            ` : ''}
                             ${item.available_languages && item.available_languages.length > 0 ? `
                                 <div class="available-languages">
                                     <strong>감지된 자막:</strong> ${item.available_languages.map(lang =>

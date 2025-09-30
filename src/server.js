@@ -912,6 +912,312 @@ function handleApiRequest(req, res, pathname) {
       }
     });
 
+  // 로컬 자막 추출
+  } else if (pathname === '/api/youtube/subtitle-local' && req.method === 'POST') {
+    console.log('🎯 로컬 자막 추출 요청 받음:', pathname);
+    let body = '';
+
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { videoId, title } = data;
+        console.log('📝 로컬 자막 받은 데이터:', { videoId, title });
+
+        if (!videoId) {
+          console.log('❌ videoId가 없음');
+          res.writeHead(400, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({ error: 'videoId is required' }));
+          return;
+        }
+
+        console.log('🎬 로컬 yt-dlp 자막 추출 시작:', videoId);
+
+        // 로컬 자막 API 모듈 로드
+        try {
+          const localAPI = require('../api/youtube/subtitle_local.js');
+
+          // mock request/response 객체 생성
+          const mockReq = {
+            method: 'POST',
+            body: { videoId, title }
+          };
+
+          const mockRes = {
+            setHeader: () => {},
+            status: (code) => ({
+              json: (data) => {
+                res.writeHead(code, {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify(data));
+              },
+              end: () => {
+                res.writeHead(code, {
+                  'Access-Control-Allow-Origin': '*'
+                });
+                res.end();
+              }
+            })
+          };
+
+          // API 호출
+          await localAPI(mockReq, mockRes);
+
+        } catch (apiError) {
+          console.log('❌ 로컬 자막 API 오류:', apiError);
+          res.writeHead(500, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'LOCAL_API_ERROR',
+            message: apiError.message
+          }));
+        }
+
+      } catch (e) {
+        console.log('❌ 로컬 자막 JSON 파싱 오류:', e.message);
+        res.writeHead(400, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+
+  // 자막 업로드
+  } else if (pathname === '/api/youtube/subtitle-upload') {
+    console.log('📤 자막 업로드 요청 받음:', pathname, req.method);
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET') {
+      // GET 요청 처리
+      (async () => {
+        try {
+          const uploadAPI = require('../api/youtube/subtitle_upload.js');
+
+          const mockReq = {
+            method: 'GET',
+            query: require('url').parse(req.url, true).query
+          };
+
+          const mockRes = {
+            setHeader: () => {},
+            status: (code) => ({
+              json: (data) => {
+                res.writeHead(code, {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify(data));
+              }
+            })
+          };
+
+          await uploadAPI(mockReq, mockRes);
+        } catch (apiError) {
+          console.log('❌ 업로드 API GET 오류:', apiError);
+          res.writeHead(500, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'UPLOAD_API_ERROR',
+            message: apiError.message
+          }));
+        }
+      })();
+    } else if (req.method === 'POST') {
+      // POST 요청 처리
+      let body = '';
+
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+
+      req.on('end', async () => {
+        try {
+          const data = JSON.parse(body);
+          console.log('📝 자막 업로드 받은 데이터:', { videoId: data.videoId, hasSubtitle: !!data.subtitle });
+
+          try {
+            const uploadAPI = require('../api/youtube/subtitle_upload.js');
+
+            const mockReq = {
+              method: 'POST',
+              body: data
+            };
+
+            const mockRes = {
+              setHeader: () => {},
+              status: (code) => ({
+                json: (data) => {
+                  res.writeHead(code, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                  });
+                  res.end(JSON.stringify(data));
+                }
+              })
+            };
+
+            await uploadAPI(mockReq, mockRes);
+
+          } catch (apiError) {
+            console.log('❌ 업로드 API POST 오류:', apiError);
+            res.writeHead(500, {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({
+              success: false,
+              error: 'UPLOAD_API_ERROR',
+              message: apiError.message
+            }));
+          }
+
+        } catch (e) {
+          console.log('❌ 업로드 JSON 파싱 오류:', e.message);
+          res.writeHead(400, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        }
+      });
+    }
+
+  // D드라이브 로컬 자막 업로드
+  } else if (pathname === '/api/youtube/subtitle-upload-local') {
+    console.log('📤 D드라이브 로컬 자막 업로드 요청 받음:', pathname, req.method);
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET') {
+      // GET 요청 처리
+      (async () => {
+        try {
+          const localUploadAPI = require('../api/youtube/subtitle_upload_local.js');
+
+          const mockReq = {
+            method: 'GET',
+            query: require('url').parse(req.url, true).query
+          };
+
+          const mockRes = {
+            setHeader: () => {},
+            status: (code) => ({
+              json: (data) => {
+                res.writeHead(code, {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify(data));
+              }
+            })
+          };
+
+          await localUploadAPI(mockReq, mockRes);
+        } catch (apiError) {
+          console.log('❌ D드라이브 업로드 API GET 오류:', apiError);
+          res.writeHead(500, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'LOCAL_UPLOAD_API_ERROR',
+            message: apiError.message
+          }));
+        }
+      })();
+    } else if (req.method === 'POST') {
+      // POST 요청 처리
+      let body = '';
+
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+
+      req.on('end', async () => {
+        try {
+          const data = JSON.parse(body);
+          console.log('📝 D드라이브 자막 업로드 받은 데이터:', { videoId: data.video_id, hasSubtitle: !!data.subtitle });
+
+          try {
+            const localUploadAPI = require('../api/youtube/subtitle_upload_local.js');
+
+            const mockReq = {
+              method: 'POST',
+              body: data
+            };
+
+            const mockRes = {
+              setHeader: () => {},
+              status: (code) => ({
+                json: (data) => {
+                  res.writeHead(code, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                  });
+                  res.end(JSON.stringify(data));
+                }
+              })
+            };
+
+            await localUploadAPI(mockReq, mockRes);
+
+          } catch (apiError) {
+            console.log('❌ D드라이브 업로드 API POST 오류:', apiError);
+            res.writeHead(500, {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({
+              success: false,
+              error: 'LOCAL_UPLOAD_API_ERROR',
+              message: apiError.message
+            }));
+          }
+
+        } catch (e) {
+          console.log('❌ D드라이브 업로드 JSON 파싱 오류:', e.message);
+          res.writeHead(400, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        }
+      });
+    }
+
   // 블로그 생성
   } else if (pathname === '/api/blog/generate' && req.method === 'POST') {
     console.log('블로그 생성 요청 받음:', pathname);
