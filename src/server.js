@@ -1218,6 +1218,66 @@ function handleApiRequest(req, res, pathname) {
       });
     }
 
+  // 자막 디버그 API
+  } else if (pathname === '/api/youtube/debug-subtitle' && req.method === 'POST') {
+    console.log('🐛 자막 디버그 요청 받음:', pathname);
+    let body = '';
+
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        console.log('🐛 디버그 자막 요청 데이터:', { videoId: data.videoId });
+
+        try {
+          const debugAPI = require('../api/youtube/debug_subtitle.js');
+
+          const mockReq = {
+            method: 'POST',
+            body: data
+          };
+
+          const mockRes = {
+            setHeader: () => {},
+            status: (code) => ({
+              json: (data) => {
+                res.writeHead(code, {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify(data));
+              }
+            })
+          };
+
+          await debugAPI(mockReq, mockRes);
+
+        } catch (apiError) {
+          console.log('❌ 디버그 API 오류:', apiError);
+          res.writeHead(500, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'DEBUG_API_ERROR',
+            message: apiError.message
+          }));
+        }
+
+      } catch (e) {
+        console.log('❌ 디버그 JSON 파싱 오류:', e.message);
+        res.writeHead(400, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+
   // 블로그 생성
   } else if (pathname === '/api/blog/generate' && req.method === 'POST') {
     console.log('블로그 생성 요청 받음:', pathname);

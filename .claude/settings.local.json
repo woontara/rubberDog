@@ -94,7 +94,8 @@
       "Bash(start https://rubber-9assbvrco-woontaras-projects.vercel.app)",
       "Bash(start https://rubber-o2frs5is8-woontaras-projects.vercel.app)",
       "Bash(start https://rubber-ktqbjn7oi-woontaras-projects.vercel.app)",
-      "Bash(VERCEL=1 node server.js)"
+      "Bash(VERCEL=1 node server.js)",
+      "Bash(TASKKILL /F /PID 31144)"
     ],
     "deny": [],
     "ask": []
