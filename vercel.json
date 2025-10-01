@@ -36,5 +36,6 @@
       "src": "/api/youtube/subtitle-upload-local",
       "dest": "/api/youtube/subtitle_upload_local.js"
     }
-  ]
+  ],
+  "public": true
 }

@@ -696,7 +696,7 @@ function parseVTTSubtitles(vttData) {
   }
 }
 
-// Vercel 서버리스 함수 (다중 방법 시도)
+// Vercel 서버리스 함수 (AWS Lambda 프록시)
 module.exports = async (req, res) => {
   // CORS 헤더 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -715,7 +715,7 @@ module.exports = async (req, res) => {
 
   try {
     const { videoId, title } = req.body;
-    console.log('🎬 자막 추출 요청:', { videoId, title, environment: isVercelEnvironment() ? 'vercel' : 'local' });
+    console.log('🎬 자막 추출 요청 (AWS Lambda 프록시):', { videoId, title });
 
     if (!videoId) {
       res.status(400).json({
@@ -726,18 +726,17 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // ONLY yt-dlp 방법 사용 (직접 yt-dlp 바이너리)
-    console.log('🔄 yt-dlp 바이너리로 자막 추출 시도...');
-    let result = await extractSubtitleDirectYTDLP(videoId);
-
-    if (!result.success) {
-      console.log('❌ yt-dlp 자막 추출 실패');
+    // Vercel 환경에서는 AWS Lambda 호출
+    if (isVercelEnvironment()) {
+      console.log('🌩️ AWS Lambda로 요청 전달...');
+      const result = await callAWSLambda(videoId, title);
+      res.status(200).json(result);
     } else {
-      console.log('✅ yt-dlp로 자막 추출 성공!');
+      // 로컬 환경에서는 기존 yt-dlp 직접 호출
+      console.log('🔄 로컬 환경: yt-dlp 바이너리로 자막 추출 시도...');
+      const result = await extractSubtitleDirectYTDLP(videoId);
+      res.status(200).json(result);
     }
-
-    console.log(`🎯 최종 결과: ${videoId}`, result.success ? '성공' : '실패', `(방법: ${result.method})`);
-    res.status(200).json(result);
 
   } catch (error) {
     console.error('❌ API 오류:', error);
@@ -750,3 +749,49 @@ module.exports = async (req, res) => {
     });
   }
 };
+
+// AWS Lambda 호출 함수
+async function callAWSLambda(videoId, title) {
+  try {
+    console.log('📡 AWS Lambda API 호출 시작...');
+
+    // AWS Lambda API Gateway URL (배포 후 업데이트 필요)
+    const lambdaUrl = process.env.AWS_LAMBDA_SUBTITLE_URL ||
+                     'https://your-lambda-api-gateway-url.amazonaws.com/prod/extract-subtitle';
+
+    const requestBody = {
+      videoId: videoId,
+      title: title || `Video_${videoId}`
+    };
+
+    console.log('🚀 Lambda 요청 데이터:', requestBody);
+
+    const response = await fetch(lambdaUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Lambda API 호출 실패: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Lambda 응답 수신:', result.success ? '성공' : '실패');
+
+    return result;
+
+  } catch (error) {
+    console.error('❌ AWS Lambda 호출 오류:', error);
+    return {
+      success: false,
+      error: 'LAMBDA_API_ERROR',
+      message: `AWS Lambda 호출 실패: ${error.message}`,
+      method: 'aws-lambda-proxy',
+      timestamp: new Date().toISOString()
+    };
+  }
+}
