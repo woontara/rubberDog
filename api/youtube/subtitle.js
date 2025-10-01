@@ -621,6 +621,118 @@ async function extractSubtitleWithCookies(videoId, cookies) {
   }
 }
 
+// 경량 자막 추출 함수 (Vercel 환경용 - 의존성 없음)
+async function extractSubtitleLite(videoId) {
+  console.log('🚀 Lite: 경량 자막 추출 시작:', videoId);
+
+  try {
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8'
+    };
+
+    console.log('🌐 Lite: YouTube 페이지 요청 중...');
+    const response = await fetch(videoUrl, { headers });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    console.log('📄 Lite: HTML 로드 완료, 자막 추출 중...');
+
+    // 자막 트랙 정보 추출
+    const captionTracksMatch = html.match(/"captionTracks":\s*(\[.*?\])/);
+
+    if (captionTracksMatch) {
+      try {
+        const captionTracks = JSON.parse(captionTracksMatch[1]);
+        console.log('✅ Lite: 자막 트랙 발견:', captionTracks.length);
+
+        // 한국어 우선, 없으면 첫 번째
+        let track = captionTracks.find(t => t.languageCode === 'ko' || t.languageCode === 'ko-KR') || captionTracks[0];
+
+        if (track && track.baseUrl) {
+          console.log('🌐 Lite: 자막 URL 발견:', track.languageCode);
+
+          const captionResponse = await fetch(track.baseUrl, { headers });
+          const xmlData = await captionResponse.text();
+          const subtitle = parseXMLSubtitlesLite(xmlData);
+
+          if (subtitle) {
+            console.log('🎉 Lite: 자막 추출 성공!');
+            return {
+              success: true,
+              subtitle,
+              language: track.name?.simpleText || 'Unknown',
+              language_code: track.languageCode,
+              is_generated: track.kind === 'asr',
+              video_id: videoId,
+              method: 'lite-youtube-api',
+              segments_count: subtitle.split('\n').length
+            };
+          }
+        }
+      } catch (parseError) {
+        console.log('⚠️ Lite: 자막 파싱 실패:', parseError.message);
+      }
+    }
+
+    return {
+      success: false,
+      error: 'NO_CAPTIONS_FOUND_LITE',
+      message: '이 영상에는 자막이 없거나 접근할 수 없습니다 (Lite)',
+      video_id: videoId,
+      method: 'lite-youtube-api'
+    };
+
+  } catch (error) {
+    console.error('❌ Lite: 자막 추출 실패:', error.message);
+    return {
+      success: false,
+      error: 'LITE_EXTRACTION_FAILED',
+      message: `Lite 자막 추출 실패: ${error.message}`,
+      video_id: videoId,
+      method: 'lite-youtube-api'
+    };
+  }
+}
+
+// 경량 XML 파싱 함수
+function parseXMLSubtitlesLite(xmlData) {
+  try {
+    const textRegex = /<text[^>]*start="([^"]*)"[^>]*>(.*?)<\/text>/g;
+    const subtitles = [];
+    let match;
+
+    while ((match = textRegex.exec(xmlData)) !== null) {
+      const startTime = parseFloat(match[1]);
+      let text = match[2]
+        .replace(/<[^>]*>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+
+      if (text) {
+        const minutes = Math.floor(startTime / 60);
+        const seconds = Math.floor(startTime % 60);
+        const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+        subtitles.push(`${timeStr} ${text}`);
+      }
+    }
+
+    return subtitles.length > 0 ? subtitles.join('\n') : null;
+  } catch (error) {
+    console.error('❌ Lite: XML 파싱 오류:', error);
+    return null;
+  }
+}
+
 // 통합 자막 추출 함수
 async function extractSubtitle(videoId, cookies = null) {
   console.log('🎯 API: 환경 감지:', isVercelEnvironment() ? 'Vercel/Production' : 'Local');
@@ -636,9 +748,17 @@ async function extractSubtitle(videoId, cookies = null) {
     console.log('⚠️ API: 쿠키 기반 실패, 기본 방법으로 폴백');
   }
 
-  // Vercel 환경에서는 JavaScript만 사용
+  // Vercel 환경에서는 경량 API 우선 시도
   if (isVercelEnvironment()) {
-    console.log('☁️ API: Vercel 환경 감지, JavaScript 사용');
+    console.log('☁️ API: Vercel 환경 감지, 경량 API 시도');
+
+    const liteResult = await extractSubtitleLite(videoId);
+    if (liteResult.success) {
+      console.log('✅ API: 경량 API 성공');
+      return liteResult;
+    }
+
+    console.log('🔄 API: 경량 API 실패, JavaScript 폴백');
     return await extractSubtitleWithJS(videoId);
   }
 
