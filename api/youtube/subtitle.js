@@ -378,27 +378,65 @@ function parseXMLSubtitles(xmlData) {
   }
 }
 
-// Python 스크립트를 사용한 자막 추출
+// Python 스크립트를 사용한 자막 추출 (다중 fallback)
 async function extractSubtitleWithPython(videoId) {
-  return new Promise((resolve, reject) => {
-    console.log('🐍 API: Python으로 자막 추출 시작:', videoId);
+  console.log('🐍 API: Python으로 자막 추출 시작:', videoId);
 
-    // Python 스크립트 경로 확인
-    const pythonScript = path.join(process.cwd(), 'youtube_subtitle_real.py');
+  // 우선순위별 Python 스크립트 목록
+  const pythonScripts = [
+    {
+      name: 'youtube_subtitle_transcript_api.py',
+      description: 'YouTube Transcript API (우선 방법)',
+      args: [videoId]
+    },
+    {
+      name: 'youtube_subtitle_real.py',
+      description: '기존 자막 추출 스크립트',
+      args: ['subtitle', videoId]
+    }
+  ];
+
+  // 각 Python 스크립트를 순차적으로 시도
+  for (const script of pythonScripts) {
+    const result = await tryPythonScript(script, videoId);
+    if (result.success) {
+      console.log(`✅ API: ${script.description} 성공`);
+      return result;
+    } else {
+      console.log(`⚠️ API: ${script.description} 실패:`, result.message);
+    }
+  }
+
+  // 모든 Python 스크립트 실패
+  console.log('❌ API: 모든 Python 방법 실패');
+  return {
+    success: false,
+    error: 'ALL_PYTHON_METHODS_FAILED',
+    message: '모든 Python 자막 추출 방법이 실패했습니다',
+    video_id: videoId
+  };
+}
+
+// 개별 Python 스크립트 실행 함수
+async function tryPythonScript(scriptInfo, videoId) {
+  return new Promise((resolve) => {
+    const pythonScript = path.join(process.cwd(), scriptInfo.name);
 
     // 파일 존재 확인
     if (!fs.existsSync(pythonScript)) {
-      console.log('Python 스크립트 파일이 없음, JavaScript로 폴백');
+      console.log(`Python 스크립트 ${scriptInfo.name} 파일이 없음`);
       resolve({
         success: false,
         error: 'PYTHON_SCRIPT_NOT_FOUND',
-        message: 'Python 스크립트를 찾을 수 없음',
+        message: `Python 스크립트 ${scriptInfo.name}을 찾을 수 없음`,
         video_id: videoId
       });
       return;
     }
 
-    const pythonProcess = spawn('python', [pythonScript, 'subtitle', videoId], {
+    console.log(`🎯 API: ${scriptInfo.description} 시도`);
+
+    const pythonProcess = spawn('python', [pythonScript, ...scriptInfo.args], {
       encoding: 'utf8'
     });
 
@@ -414,14 +452,14 @@ async function extractSubtitleWithPython(videoId) {
     });
 
     pythonProcess.on('close', (code) => {
-      console.log(`🐍 API: Python 스크립트 종료. 코드: ${code}`);
+      console.log(`🐍 API: ${scriptInfo.name} 종료. 코드: ${code}`);
 
       if (code !== 0) {
-        console.error('API: Python 스크립트 오류:', stderr);
+        console.error(`API: ${scriptInfo.name} 오류:`, stderr);
         resolve({
           success: false,
           error: 'PYTHON_ERROR',
-          message: `Python 실행 실패: ${stderr || 'Unknown error'}`,
+          message: `${scriptInfo.name} 실행 실패: ${stderr || 'Unknown error'}`,
           video_id: videoId
         });
         return;
@@ -429,44 +467,45 @@ async function extractSubtitleWithPython(videoId) {
 
       try {
         const result = JSON.parse(stdout);
-        console.log('📝 API: Python 자막 추출 결과:', result.subtitle ? '성공' : '실패');
+        console.log(`📝 API: ${scriptInfo.name} 결과:`, result.success ? '성공' : '실패');
 
-        if (result.error) {
-          resolve({
-            success: false,
-            error: result.error,
-            message: result.error,
-            video_id: videoId
-          });
-        } else {
+        if (result.success) {
           resolve({
             success: true,
             subtitle: result.subtitle,
-            language: result.language,
+            language: result.language || result.language_name,
             language_code: result.language_code,
             is_generated: result.is_generated,
             video_id: result.video_id,
-            method: 'python-youtube-transcript-api'
+            method: result.method || `python-${scriptInfo.name}`,
+            segments_count: result.segments_count
+          });
+        } else {
+          resolve({
+            success: false,
+            error: result.error,
+            message: result.message || result.error,
+            video_id: videoId
           });
         }
       } catch (parseError) {
-        console.error('API: JSON 파싱 오류:', parseError);
-        console.error('API: Python 출력:', stdout);
+        console.error(`API: ${scriptInfo.name} JSON 파싱 오류:`, parseError);
+        console.error(`API: ${scriptInfo.name} 출력:`, stdout);
         resolve({
           success: false,
           error: 'PARSE_ERROR',
-          message: `결과 파싱 실패: ${parseError.message}`,
+          message: `${scriptInfo.name} 결과 파싱 실패: ${parseError.message}`,
           video_id: videoId
         });
       }
     });
 
     pythonProcess.on('error', (error) => {
-      console.error('API: Python 프로세스 오류:', error);
+      console.error(`API: ${scriptInfo.name} 프로세스 오류:`, error);
       resolve({
         success: false,
         error: 'PROCESS_ERROR',
-        message: `Python 프로세스 실행 실패: ${error.message}`,
+        message: `${scriptInfo.name} 프로세스 실행 실패: ${error.message}`,
         video_id: videoId
       });
     });

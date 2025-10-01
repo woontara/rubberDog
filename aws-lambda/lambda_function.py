@@ -13,6 +13,13 @@ def lambda_handler(event, context):
     """
 
     try:
+        # 즉시 youtube-transcript-api 테스트
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            print("✅ Lambda 핸들러에서 youtube-transcript-api 임포트 성공")
+        except Exception as e:
+            print(f"❌ Lambda 핸들러에서 youtube-transcript-api 임포트 실패: {str(e)}")
+
         # CORS 헤더 설정
         headers = {
             'Content-Type': 'application/json',
@@ -61,8 +68,19 @@ def lambda_handler(event, context):
         # YouTube URL 구성
         youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
-        # 자막 추출 실행
-        result = extract_subtitle_with_ytdlp(video_id, youtube_url, title)
+        # 자막 추출 실행 (우선순위: youtube-transcript-api → yt-dlp)
+        print(f"🎯 1차 시도: YouTube Transcript API")
+        result = extract_subtitle_with_youtube_transcript_api(video_id, title)
+        print(f"📊 YouTube Transcript API 결과: success={result['success']}")
+        if not result['success']:
+            print(f"❌ YouTube Transcript API 오류: {result.get('error', 'Unknown error')}")
+
+        if not result['success']:
+            print(f"🔄 2차 시도: yt-dlp fallback")
+            result = extract_subtitle_with_ytdlp(video_id, youtube_url, title)
+            print(f"📊 yt-dlp 결과: success={result['success']}")
+            if not result['success']:
+                print(f"❌ yt-dlp 오류: {result.get('error', 'Unknown error')}")
 
         if result['success']:
             # S3에 저장
@@ -86,9 +104,154 @@ def lambda_handler(event, context):
             }, ensure_ascii=False)
         }
 
+def extract_subtitle_with_youtube_transcript_api(video_id, title):
+    """
+    youtube-transcript-api를 사용하여 자막 추출 (우선 방법)
+    """
+    try:
+        print(f"🎯 YouTube Transcript API로 자막 추출 시작: {video_id}")
+
+        # youtube-transcript-api 임포트
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            print("✅ youtube-transcript-api 라이브러리 로드 성공")
+        except ImportError as e:
+            print(f"❌ youtube-transcript-api 라이브러리 임포트 실패: {str(e)}")
+            return {
+                'success': False,
+                'error': f'youtube-transcript-api library import failed: {str(e)}'
+            }
+        except Exception as e:
+            print(f"❌ youtube-transcript-api 라이브러리 로드 중 예상치 못한 오류: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Unexpected error loading youtube-transcript-api: {str(e)}'
+            }
+
+        # API 인스턴스 생성
+        api = YouTubeTranscriptApi()
+
+        # 한국어 자막 우선 시도
+        transcript = None
+        language_used = None
+        language_name = None
+
+        korean_codes = ['ko']
+        for lang_code in korean_codes:
+            try:
+                transcript = api.fetch(video_id, languages=[lang_code])
+                language_used = lang_code
+                language_name = '한국어'
+                print(f"✅ 한국어 자막 발견: {lang_code}")
+                break
+            except:
+                continue
+
+        # 한국어가 없으면 영어 시도
+        if not transcript:
+            english_codes = ['en']
+            for lang_code in english_codes:
+                try:
+                    transcript = api.fetch(video_id, languages=[lang_code])
+                    language_used = lang_code
+                    language_name = '영어'
+                    print(f"✅ 영어 자막 발견: {lang_code}")
+                    break
+                except:
+                    continue
+
+        # 기본 자막 시도 (언어 지정 없음)
+        if not transcript:
+            try:
+                transcript = api.fetch(video_id)
+                language_used = 'auto'
+                language_name = '자동감지'
+                print(f"✅ 자동감지 자막 발견")
+            except Exception as e:
+                print(f"❌ 자막 추출 실패: {str(e)}")
+                return {
+                    'success': False,
+                    'error': f'youtube-transcript-api 실패: {str(e)}'
+                }
+
+        if not transcript:
+            return {
+                'success': False,
+                'error': 'NO_SUPPORTED_LANGUAGE'
+            }
+
+        # 자막 포맷팅
+        formatted_subtitle = format_transcript_with_timestamps(transcript)
+
+        print(f"🎉 YouTube Transcript API 자막 추출 성공! {len(transcript)}개 세그먼트")
+
+        # 메타데이터 생성
+        metadata = {
+            'video_id': video_id,
+            'title': title,
+            'language': language_name,
+            'language_code': language_used,
+            'format': 'text_with_timestamps',
+            'method': 'aws-lambda-youtube-transcript-api',
+            'success': True,
+            'saved_at': datetime.utcnow().isoformat() + 'Z',
+            'storage_type': 'aws_s3'
+        }
+
+        return {
+            'success': True,
+            'video_id': video_id,
+            'subtitle': formatted_subtitle,
+            'method': 'aws-lambda-youtube-transcript-api',
+            'language': language_name,
+            'language_code': language_used,
+            'format': 'text_with_timestamps',
+            'metadata': metadata,
+            'segments_count': len(transcript),
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+
+    except Exception as e:
+        print(f"❌ YouTube Transcript API 오류: {str(e)}")
+        return {
+            'success': False,
+            'error': f'YouTube Transcript API 실패: {str(e)}'
+        }
+
+def format_transcript_with_timestamps(transcript):
+    """자막을 타임스탬프와 함께 포맷팅"""
+    formatted_lines = []
+
+    for entry in transcript:
+        try:
+            # entry의 속성을 확인
+            if hasattr(entry, 'start'):
+                start_time = entry.start
+                text = entry.text
+            elif hasattr(entry, '__getitem__'):
+                start_time = entry['start']
+                text = entry['text']
+            else:
+                start_time = getattr(entry, 'start', 0)
+                text = getattr(entry, 'text', str(entry))
+
+            # 시간을 MM:SS 형식으로 변환
+            minutes = int(start_time // 60)
+            seconds = int(start_time % 60)
+            timestamp = f"{minutes}:{seconds:02d}"
+
+            # 텍스트 정리
+            clean_text = text.strip().replace('\n', ' ')
+
+            formatted_lines.append(f"[{timestamp}] {clean_text}")
+        except Exception as e:
+            formatted_lines.append(f"[ERROR] {str(entry)}")
+
+    return '\n'.join(formatted_lines)
+
 def extract_subtitle_with_ytdlp(video_id, youtube_url, title):
     """
-    yt-dlp를 사용하여 자막 추출
+    yt-dlp를 사용하여 자막 추출 (fallback 방법)
     """
     try:
         # 임시 디렉토리 생성
