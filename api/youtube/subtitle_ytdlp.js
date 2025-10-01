@@ -726,11 +726,23 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // Vercel 환경에서는 AWS Lambda 호출
+    // Vercel 환경에서는 AWS Lambda 우선, 실패시 웹 API 폴백
     if (isVercelEnvironment()) {
       console.log('🌩️ AWS Lambda로 요청 전달...');
-      const result = await callAWSLambda(videoId, title);
-      res.status(200).json(result);
+      const lambdaResult = await callAWSLambda(videoId, title);
+
+      // Lambda 실패시 웹 API 방식으로 폴백
+      if (!lambdaResult.success && (lambdaResult.error === 'LAMBDA_NETWORK_ERROR' || lambdaResult.error === 'LAMBDA_TIMEOUT_ERROR')) {
+        console.log('⚠️ Lambda 실패, 웹 API 방식으로 폴백...');
+        const fallbackResult = await extractSubtitleWebAPI(videoId);
+        res.status(200).json({
+          ...fallbackResult,
+          fallback: true,
+          original_error: lambdaResult.message
+        });
+      } else {
+        res.status(200).json(lambdaResult);
+      }
     } else {
       // 로컬 환경에서는 기존 yt-dlp 직접 호출
       console.log('🔄 로컬 환경: yt-dlp 바이너리로 자막 추출 시도...');
