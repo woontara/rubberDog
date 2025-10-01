@@ -517,9 +517,124 @@ function isVercelEnvironment() {
   return process.env.VERCEL || process.env.NODE_ENV === 'production';
 }
 
+// 쿠키를 사용한 자막 추출 함수
+async function extractSubtitleWithCookies(videoId, cookies) {
+  console.log('🍪 쿠키 기반 자막 추출 시작:', videoId);
+
+  const fs = require('fs');
+  const os = require('os');
+  const tempDir = os.tmpdir();
+  const cookieFile = path.join(tempDir, `yt_cookies_${videoId}_${Date.now()}.txt`);
+
+  try {
+    // 쿠키 파일 생성
+    fs.writeFileSync(cookieFile, cookies, 'utf8');
+    console.log('🍪 쿠키 파일 생성 완료:', cookieFile);
+
+    // Python 스크립트로 쿠키 기반 추출 시도
+    return new Promise((resolve) => {
+      const pythonScript = path.join(__dirname, '../../youtube_subtitle_real.py');
+      const ytdlpPath = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+
+      console.log('🐍 쿠키 파일과 함께 Python 스크립트 실행');
+
+      const python = spawn('python', [pythonScript, videoId, '--cookies', cookieFile], {
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let output = '';
+      let errorOutput = '';
+
+      python.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      python.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      python.on('close', (code) => {
+        console.log(`🍪 Python 쿠키 추출 완료, 종료 코드: ${code}`);
+
+        // 쿠키 파일 정리
+        try {
+          fs.unlinkSync(cookieFile);
+          console.log('🧹 쿠키 파일 정리 완료');
+        } catch (e) {
+          console.log('⚠️ 쿠키 파일 정리 실패:', e.message);
+        }
+
+        if (code === 0 && output.trim()) {
+          try {
+            const result = JSON.parse(output.trim());
+            console.log('✅ 쿠키 기반 자막 추출 성공');
+            resolve({
+              success: true,
+              subtitles: result.subtitles || result.subtitle || result,
+              method: 'python_with_cookies',
+              videoId: videoId
+            });
+            return;
+          } catch (parseError) {
+            console.log('⚠️ 쿠키 기반 JSON 파싱 실패:', parseError.message);
+          }
+        }
+
+        console.log('❌ 쿠키 기반 자막 추출 실패');
+        console.log('Error output:', errorOutput);
+        resolve({
+          success: false,
+          error: `쿠키 기반 추출 실패: ${errorOutput || '알 수 없는 오류'}`,
+          method: 'python_with_cookies'
+        });
+      });
+
+      python.on('error', (error) => {
+        console.log('❌ 쿠키 기반 Python 프로세스 오류:', error.message);
+
+        // 쿠키 파일 정리
+        try {
+          fs.unlinkSync(cookieFile);
+        } catch (e) {}
+
+        resolve({
+          success: false,
+          error: `쿠키 기반 Python 실행 오류: ${error.message}`,
+          method: 'python_with_cookies'
+        });
+      });
+    });
+
+  } catch (error) {
+    console.log('❌ 쿠키 파일 생성 오류:', error.message);
+
+    // 쿠키 파일 정리
+    try {
+      fs.unlinkSync(cookieFile);
+    } catch (e) {}
+
+    return {
+      success: false,
+      error: `쿠키 파일 생성 오류: ${error.message}`,
+      method: 'python_with_cookies'
+    };
+  }
+}
+
 // 통합 자막 추출 함수
-async function extractSubtitle(videoId) {
+async function extractSubtitle(videoId, cookies = null) {
   console.log('🎯 API: 환경 감지:', isVercelEnvironment() ? 'Vercel/Production' : 'Local');
+  console.log('🍪 API: 쿠키 상태:', cookies ? '제공됨' : '없음');
+
+  // 쿠키가 제공된 경우 쿠키 기반 방법 우선 시도
+  if (cookies) {
+    console.log('🍪 API: 쿠키 기반 추출 시도');
+    const cookieResult = await extractSubtitleWithCookies(videoId, cookies);
+    if (cookieResult.success) {
+      return cookieResult;
+    }
+    console.log('⚠️ API: 쿠키 기반 실패, 기본 방법으로 폴백');
+  }
 
   // Vercel 환경에서는 JavaScript만 사용
   if (isVercelEnvironment()) {
@@ -557,8 +672,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { videoId, title } = req.body;
-    console.log('🎬 API: 자막 추출 요청:', { videoId, title });
+    const { videoId, title, cookies } = req.body;
+    console.log('🎬 API: 자막 추출 요청:', { videoId, title, hasCookies: !!cookies });
 
     if (!videoId) {
       res.status(400).json({
@@ -569,8 +684,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 환경에 따른 최적 방법으로 자막 추출
-    const result = await extractSubtitle(videoId);
+    // 환경에 따른 최적 방법으로 자막 추출 (쿠키 포함)
+    const result = await extractSubtitle(videoId, cookies);
     console.log(`✅ API: 자막 추출 완료: ${videoId}`, result.success ? '성공' : '실패');
 
     res.status(200).json(result);
