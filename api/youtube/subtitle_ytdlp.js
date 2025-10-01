@@ -766,14 +766,21 @@ async function callAWSLambda(videoId, title) {
 
     console.log('🚀 Lambda 요청 데이터:', requestBody);
 
+    // AbortController로 타임아웃 구현
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2분 타임아웃
+
     const response = await fetch(lambdaUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Lambda API 호출 실패: ${response.status} ${response.statusText}`);
@@ -786,10 +793,22 @@ async function callAWSLambda(videoId, title) {
 
   } catch (error) {
     console.error('❌ AWS Lambda 호출 오류:', error);
+
+    let errorMessage = error.message;
+    let errorType = 'LAMBDA_API_ERROR';
+
+    if (error.name === 'AbortError') {
+      errorMessage = 'Lambda 요청 타임아웃 (2분 초과)';
+      errorType = 'LAMBDA_TIMEOUT_ERROR';
+    } else if (error.message.includes('fetch failed')) {
+      errorMessage = 'Lambda 서버 연결 실패 - 네트워크 오류';
+      errorType = 'LAMBDA_NETWORK_ERROR';
+    }
+
     return {
       success: false,
-      error: 'LAMBDA_API_ERROR',
-      message: `AWS Lambda 호출 실패: ${error.message}`,
+      error: errorType,
+      message: `AWS Lambda 호출 실패: ${errorMessage}`,
       method: 'aws-lambda-proxy',
       timestamp: new Date().toISOString()
     };
