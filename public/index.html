@@ -968,6 +968,261 @@
         // 자막 데이터 저장
         let extractedSubtitles = [];
 
+        // 클라이언트 사이드 자막 추출 함수
+        async function extractSubtitleFromBrowser(videoId) {
+            console.log('🌐 클라이언트 사이드: 브라우저에서 자막 추출 시작:', videoId);
+
+            try {
+                // 1. 직접 YouTube 자막 API 호출 시도 (사용자 브라우저 환경 활용)
+                const languages = [
+                    { code: 'ko', name: 'Korean' },
+                    { code: 'ko-KR', name: 'Korean (Korea)' },
+                    { code: 'en', name: 'English' },
+                    { code: 'en-US', name: 'English (US)' }
+                ];
+
+                for (const lang of languages) {
+                    try {
+                        console.log(`🔍 ${lang.name} 자막 시도: ${videoId}`);
+
+                        const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang.code}&fmt=vtt`;
+
+                        const response = await fetch(timedTextUrl, {
+                            method: 'GET',
+                            credentials: 'include', // 브라우저 쿠키 포함
+                            mode: 'cors',
+                            headers: {
+                                'Accept': 'text/vtt, text/plain, */*',
+                                'Cache-Control': 'no-cache'
+                            }
+                        });
+
+                        console.log(`📊 ${lang.name} 응답:`, response.status, response.headers.get('content-length'));
+
+                        if (response.ok) {
+                            const vttContent = await response.text();
+
+                            if (vttContent && vttContent.trim() && vttContent.length > 50) {
+                                console.log(`✅ ${lang.name} 자막 발견! 길이: ${vttContent.length}`);
+
+                                const subtitle = parseVTTContent(vttContent);
+                                if (subtitle) {
+                                    return {
+                                        success: true,
+                                        subtitle: subtitle,
+                                        method: 'client-browser-api',
+                                        language: lang.name,
+                                        language_code: lang.code,
+                                        source: 'youtube-timedtext-api'
+                                    };
+                                }
+                            } else {
+                                console.log(`❌ ${lang.name} 자막 없음 (길이: ${vttContent ? vttContent.length : 0})`);
+                            }
+                        } else {
+                            console.log(`❌ ${lang.name} 요청 실패:`, response.status);
+                        }
+                    } catch (langError) {
+                        console.log(`❌ ${lang.name} 언어별 오류:`, langError.message);
+                    }
+                }
+
+                // 2. YouTube 페이지에서 캡션 정보 직접 파싱 시도
+                console.log('🔍 YouTube 페이지 파싱 시도');
+                try {
+                    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+                    const pageResponse = await fetch(videoUrl, {
+                        method: 'GET',
+                        credentials: 'include',
+                        mode: 'cors',
+                        headers: {
+                            'User-Agent': navigator.userAgent,
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                            'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
+
+                    if (pageResponse.ok) {
+                        const html = await pageResponse.text();
+                        console.log('📄 YouTube 페이지 로드 성공, HTML 길이:', html.length);
+
+                        // captionTracks 추출 시도
+                        const captionMatches = [
+                            /"captionTracks":\s*(\[[^\]]*\])/,
+                            /"captions":\s*\{"playerCaptionsTracklistRenderer":\s*\{"captionTracks":\s*(\[[^\]]*\])/
+                        ];
+
+                        for (const pattern of captionMatches) {
+                            const match = html.match(pattern);
+                            if (match) {
+                                try {
+                                    const captionTracks = JSON.parse(match[1]);
+                                    console.log('✅ 캡션 트랙 발견:', captionTracks.length);
+
+                                    // 한국어 우선, 그 다음 영어
+                                    const priorityOrder = ['ko', 'ko-KR', 'en', 'en-US'];
+
+                                    for (const langCode of priorityOrder) {
+                                        const track = captionTracks.find(t => t.languageCode === langCode);
+                                        if (track && track.baseUrl) {
+                                            console.log(`🎯 ${langCode} 캡션 URL 발견`);
+
+                                            try {
+                                                const captionResponse = await fetch(track.baseUrl, {
+                                                    credentials: 'include',
+                                                    mode: 'cors'
+                                                });
+
+                                                if (captionResponse.ok) {
+                                                    const xmlContent = await captionResponse.text();
+                                                    if (xmlContent && xmlContent.length > 50) {
+                                                        const subtitle = parseXMLSubtitles(xmlContent);
+                                                        if (subtitle) {
+                                                            return {
+                                                                success: true,
+                                                                subtitle: subtitle,
+                                                                method: 'client-page-parsing',
+                                                                language: track.name?.simpleText || langCode,
+                                                                language_code: langCode,
+                                                                source: 'youtube-caption-tracks'
+                                                            };
+                                                        }
+                                                    }
+                                                }
+                                            } catch (captionError) {
+                                                console.log(`❌ ${langCode} 캡션 다운로드 오류:`, captionError.message);
+                                            }
+                                        }
+                                    }
+                                } catch (parseError) {
+                                    console.log('❌ 캡션 트랙 파싱 오류:', parseError.message);
+                                }
+                            }
+                        }
+                    }
+                } catch (pageError) {
+                    console.log('❌ YouTube 페이지 파싱 오류:', pageError.message);
+                }
+
+                // 3. 실패한 경우
+                return {
+                    success: false,
+                    error: 'NO_CAPTIONS_BROWSER',
+                    message: '브라우저에서 모든 방법으로 자막을 찾을 수 없습니다',
+                    source: 'client-side-fallback'
+                };
+
+            } catch (error) {
+                console.error('클라이언트 사이드 자막 추출 전체 오류:', error);
+                return {
+                    success: false,
+                    error: 'CLIENT_SIDE_EXTRACTION_ERROR',
+                    message: `브라우저 자막 추출 오류: ${error.message}`,
+                    source: 'client-side-error'
+                };
+            }
+        }
+
+        // XML 자막 파싱 함수 (캡션 트랙용)
+        function parseXMLSubtitles(xmlContent) {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+                const textElements = xmlDoc.querySelectorAll('text');
+
+                if (textElements.length === 0) {
+                    // XML 파서가 실패한 경우 정규식 사용
+                    return parseXMLSubtitlesRegex(xmlContent);
+                }
+
+                const subtitles = [];
+                textElements.forEach(element => {
+                    const start = parseFloat(element.getAttribute('start') || '0');
+                    const text = element.textContent || '';
+
+                    if (text.trim()) {
+                        const minutes = Math.floor(start / 60);
+                        const seconds = Math.floor(start % 60);
+                        const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+
+                        const cleanText = text.replace(/<[^>]*>/g, '').trim();
+                        if (cleanText) {
+                            subtitles.push(`${timeStr} ${cleanText}`);
+                        }
+                    }
+                });
+
+                return subtitles.length > 0 ? subtitles.join('\n') : null;
+            } catch (error) {
+                console.error('XML 파싱 오류:', error);
+                return parseXMLSubtitlesRegex(xmlContent);
+            }
+        }
+
+        // XML 정규식 파싱 (fallback)
+        function parseXMLSubtitlesRegex(xmlContent) {
+            try {
+                const textRegex = /<text[^>]*start="([^"]*)"[^>]*>(.*?)<\/text>/g;
+                const subtitles = [];
+                let match;
+
+                while ((match = textRegex.exec(xmlContent)) !== null) {
+                    const start = parseFloat(match[1]);
+                    let text = match[2];
+
+                    text = text.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+
+                    if (text) {
+                        const minutes = Math.floor(start / 60);
+                        const seconds = Math.floor(start % 60);
+                        const timeStr = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}]`;
+                        subtitles.push(`${timeStr} ${text}`);
+                    }
+                }
+
+                return subtitles.length > 0 ? subtitles.join('\n') : null;
+            } catch (error) {
+                console.error('XML 정규식 파싱 오류:', error);
+                return null;
+            }
+        }
+
+        // VTT 콘텐츠 파싱 함수
+        function parseVTTContent(vttContent) {
+            try {
+                const lines = vttContent.split('\n');
+                const subtitles = [];
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+
+                    // 시간 라인 찾기 (00:00:00.000 --> 00:00:03.000)
+                    if (line.includes('-->')) {
+                        const timeMatch = line.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/);
+                        if (timeMatch && i + 1 < lines.length) {
+                            const startTime = timeMatch[1];
+                            const text = lines[i + 1].trim();
+
+                            if (text && !text.includes('-->')) {
+                                // HTML 태그 제거
+                                const cleanText = text.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+                                if (cleanText) {
+                                    subtitles.push(`[${startTime.substr(0, 8)}] ${cleanText}`);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return subtitles.length > 0 ? subtitles.join('\n') : null;
+            } catch (error) {
+                console.error('VTT 파싱 오류:', error);
+                return null;
+            }
+        }
+
         // 통합 자막 추출 및 불러오기 함수
         async function extractAndLoadSubtitles() {
             if (selectedVideos.length === 0) {
@@ -988,9 +1243,11 @@
                     const video = selectedVideos[i];
                     extractBtn.textContent = `자막 추출 중... (${i + 1}/${selectedVideos.length})`;
 
+                    let subtitleData = null;
+
                     try {
-                        // yt-dlp 통합 방식으로 자막 추출 (베셀에서 웹 API 사용)
-                        console.log(`🎯 yt-dlp로 자막 추출 시작: ${video.title}`);
+                        // 1단계: 서버 API로 자막 추출 시도
+                        console.log(`🎯 서버 API로 자막 추출 시작: ${video.title}`);
                         const response = await fetch('/api/youtube/subtitle-ytdlp', {
                             method: 'POST',
                             headers: {
@@ -1005,53 +1262,104 @@
                         const data = await response.json();
 
                         if (data.success && data.subtitle) {
-                            // 성공한 경우 D드라이브에 로컬 저장
-                            console.log(`📤 D드라이브로 자막 저장 시작: ${video.title}`);
-                            const uploadResponse = await fetch('/api/youtube/subtitle-upload-local', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    videoId: video.id,
-                                    subtitle: data.subtitle,
-                                    language: data.language,
-                                    language_code: data.language_code,
-                                    format: data.format,
-                                    method: 'hybrid-web-to-local',
-                                    file_downloaded: data.file_downloaded
-                                })
-                            });
+                            console.log(`✅ 서버 API 자막 추출 성공: ${video.title}`);
+                            subtitleData = {
+                                videoId: video.id,
+                                title: video.title,
+                                subtitle: data.subtitle,
+                                success: true,
+                                error: null,
+                                message: `서버 API 성공 (${data.method})`,
+                                timestamp: new Date().toISOString(),
+                                method: data.method || 'server-api',
+                                language_code: data.language_code,
+                                format: data.format
+                            };
+                        } else {
+                            console.log(`❌ 서버 API 실패, 클라이언트 사이드 시도: ${video.title}`);
 
-                            const uploadData = await uploadResponse.json();
-                            console.log(`✅ D드라이브 저장 완료: ${video.title}`, uploadData.success ? '성공' : '실패');
+                            // 2단계: 클라이언트 사이드로 자막 추출 시도
+                            extractBtn.textContent = `브라우저 자막 추출 중... (${i + 1}/${selectedVideos.length})`;
+                            const clientResult = await extractSubtitleFromBrowser(video.id);
+
+                            if (clientResult.success && clientResult.subtitle) {
+                                console.log(`✅ 클라이언트 사이드 자막 추출 성공: ${video.title}`);
+                                subtitleData = {
+                                    videoId: video.id,
+                                    title: video.title,
+                                    subtitle: clientResult.subtitle,
+                                    success: true,
+                                    error: null,
+                                    message: `브라우저 추출 성공 (${clientResult.method})`,
+                                    timestamp: new Date().toISOString(),
+                                    method: clientResult.method,
+                                    language_code: clientResult.language_code,
+                                    format: 'vtt'
+                                };
+                            } else {
+                                console.log(`❌ 클라이언트 사이드 실패: ${video.title} - ${clientResult.error}`);
+                                subtitleData = {
+                                    videoId: video.id,
+                                    title: video.title,
+                                    subtitle: null,
+                                    success: false,
+                                    error: clientResult.error,
+                                    message: `모든 방법 실패: 서버(${data.error}) + 브라우저(${clientResult.error})`,
+                                    timestamp: new Date().toISOString(),
+                                    method: 'hybrid-failed',
+                                    language_code: null,
+                                    format: null
+                                };
+                            }
+                        }
+
+                        // 성공한 경우 D드라이브에 저장
+                        if (subtitleData.success && subtitleData.subtitle) {
+                            try {
+                                console.log(`📤 D드라이브로 자막 저장 시작: ${video.title}`);
+                                const uploadResponse = await fetch('/api/youtube/subtitle-upload-local', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        videoId: video.id,
+                                        subtitle: subtitleData.subtitle,
+                                        language: subtitleData.language,
+                                        language_code: subtitleData.language_code,
+                                        format: subtitleData.format,
+                                        method: subtitleData.method,
+                                        file_downloaded: false
+                                    })
+                                });
+
+                                const uploadData = await uploadResponse.json();
+                                console.log(`✅ D드라이브 저장 완료: ${video.title}`, uploadData.success ? '성공' : '실패');
+                            } catch (saveError) {
+                                console.error(`❌ D드라이브 저장 오류: ${video.title}`, saveError);
+                            }
                         }
 
                         // 자막 데이터 저장 (성공/실패 모두)
-                        const subtitleData = {
-                            videoId: video.id,
-                            title: video.title,
-                            subtitle: data.subtitle,
-                            success: data.success,
-                            error: data.error,
-                            message: data.message || (data.success ? `yt-dlp로 성공 (${data.method})` : '자막 추출 실패'),
-                            timestamp: new Date().toISOString(),
-                            method: data.method || 'yt-dlp-web-api',
-                            language_code: data.language_code,
-                            format: data.format
-                        };
-
-                        // 기존 자막 제거 (중복 방지)
                         extractedSubtitles = extractedSubtitles.filter(item => item.videoId !== video.id);
                         extractedSubtitles.push(subtitleData);
 
-                        if (data.success && data.subtitle) {
-                            console.log(`✅ 자막 추출 성공: ${video.title} (${data.method})`);
-                        } else {
-                            console.log(`❌ 자막 추출 실패: ${video.title} - ${data.error || data.message}`);
-                        }
                     } catch (error) {
-                        console.error(`❌ 자막 추출 오류: ${video.title}`, error);
+                        console.error(`❌ 자막 추출 전체 오류: ${video.title}`, error);
+                        const errorData = {
+                            videoId: video.id,
+                            title: video.title,
+                            subtitle: null,
+                            success: false,
+                            error: 'EXTRACTION_ERROR',
+                            message: `추출 오류: ${error.message}`,
+                            timestamp: new Date().toISOString(),
+                            method: 'error',
+                            language_code: null,
+                            format: null
+                        };
+                        extractedSubtitles = extractedSubtitles.filter(item => item.videoId !== video.id);
+                        extractedSubtitles.push(errorData);
                     }
                 }
 
