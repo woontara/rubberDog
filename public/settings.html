@@ -362,6 +362,47 @@
                 </div>
             </div>
 
+            <!-- 블로그 생성 설정 -->
+            <div class="setting-group">
+                <h2>✍️ 블로그 생성 설정</h2>
+
+                <div class="setting-item">
+                    <label>블로그 프롬프트 템플릿</label>
+                    <div class="description" style="margin-bottom: 10px;">
+                        AI가 블로그 글을 작성할 때 사용할 프롬프트를 설정합니다.<br>
+                        비워두면 기본 템플릿(여행 블로그 전문 작가)이 사용됩니다.
+                    </div>
+                    <textarea
+                        id="blog-prompt-template"
+                        rows="10"
+                        placeholder="예시:&#10;당신은 여행 블로그 전문 작가입니다.&#10;&#10;**작성 스타일**: 친근하고 생동감 있는 문체&#10;**글 구조**:&#10;1. 흥미로운 도입부&#10;2. 여행지 특징과 분위기&#10;3. 실용적인 여행 정보&#10;4. 개인적인 경험과 감상&#10;5. 유용한 팁과 주의사항&#10;&#10;**톤**: 친근하고 따뜻한&#10;**형식**: 마크다운&#10;**분량**: 2000-3000자"
+                        style="width: 100%; font-family: monospace; font-size: 14px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; resize: vertical; line-height: 1.6;"
+                    ></textarea>
+                </div>
+
+                <div class="setting-item">
+                    <label>프롬프트 프리셋</label>
+                    <div class="description" style="margin-bottom: 10px;">자주 사용하는 프롬프트 템플릿을 빠르게 적용합니다.</div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="applyPromptPreset('travel')">
+                            여행 블로그
+                        </button>
+                        <button class="btn btn-secondary" onclick="applyPromptPreset('vlog')">
+                            브이로그 리뷰
+                        </button>
+                        <button class="btn btn-secondary" onclick="applyPromptPreset('info')">
+                            정보성 콘텐츠
+                        </button>
+                        <button class="btn btn-secondary" onclick="applyPromptPreset('story')">
+                            스토리텔링
+                        </button>
+                        <button class="btn btn-secondary" onclick="applyPromptPreset('clear')">
+                            초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- 시스템 관리 -->
             <div class="setting-group">
                 <h2>🛠️ 시스템 관리</h2>
@@ -416,6 +457,90 @@
             }
         }
 
+        // 프롬프트 프리셋 정의
+        const PROMPT_PRESETS = {
+            travel: `당신은 여행 블로그 전문 작가입니다.
+
+**작성 스타일**: 친근하고 생동감 있는 문체로 독자가 현장에 있는 듯한 느낌을 주는 글을 작성합니다.
+
+**글 구조**:
+1. 흥미로운 도입부로 독자의 관심을 끌어주세요
+2. 여행지의 특징과 분위기를 생생하게 묘사해주세요
+3. 실용적인 여행 정보(교통, 맛집, 추천 코스 등)를 포함해주세요
+4. 개인적인 경험과 감상을 담아주세요
+5. 독자에게 도움이 될 팁이나 주의사항을 언급해주세요
+
+**톤**: 친근하고 따뜻한
+**형식**: 마크다운 형식
+**분량**: 2000-3000자 내외`,
+            vlog: `당신은 브이로그 콘텐츠 전문 리뷰어입니다.
+
+**작성 스타일**: 영상의 하이라이트와 재미 포인트를 잘 짚어내는 경쾌한 문체
+
+**글 구조**:
+1. 영상의 전체적인 분위기와 테마 소개
+2. 주요 장면과 인상 깊었던 순간들
+3. 브이로거의 개성과 촬영 스타일 분석
+4. 영상에서 발견한 정보나 팁 정리
+5. 시청 추천 및 기대평
+
+**톤**: 활기차고 긍정적인
+**형식**: 마크다운 형식
+**분량**: 1500-2000자 내외`,
+            info: `당신은 정보 전달에 특화된 콘텐츠 작가입니다.
+
+**작성 스타일**: 명확하고 구조화된 정보 전달, 객관적이고 신뢰감 있는 문체
+
+**글 구조**:
+1. 핵심 주제와 정보 요약
+2. 세부 정보를 논리적 순서로 정리
+3. 데이터나 사실 기반 내용 강조
+4. 실용적인 활용 방법이나 팁 제공
+5. 참고 정보나 추가 리소스 안내
+
+**톤**: 전문적이고 신뢰감 있는
+**형식**: 마크다운 형식, 리스트와 헤딩 적극 활용
+**분량**: 1500-2500자 내외`,
+            story: `당신은 스토리텔링에 능한 감성적인 작가입니다.
+
+**작성 스타일**: 서사적이고 몰입감 있는 문체, 독자의 감정을 움직이는 글쓰기
+
+**글 구조**:
+1. 흥미를 끄는 도입부 (장면 묘사 또는 질문)
+2. 시간 순서대로 전개되는 경험 서술
+3. 감정의 변화와 내적 성찰
+4. 인상 깊었던 순간의 디테일 묘사
+5. 독자에게 남기고 싶은 메시지
+
+**톤**: 따뜻하고 감성적인, 때로는 유머러스한
+**형식**: 마크다운 형식, 단락 구분 명확히
+**분량**: 2000-3000자 내외`
+        };
+
+        // 프롬프트 프리셋 적용
+        function applyPromptPreset(presetName) {
+            const textarea = document.getElementById('blog-prompt-template');
+
+            if (presetName === 'clear') {
+                textarea.value = '';
+                showStatus('프롬프트 템플릿이 초기화되었습니다.', 'success');
+            } else if (PROMPT_PRESETS[presetName]) {
+                textarea.value = PROMPT_PRESETS[presetName];
+                showStatus(`"${getPresetDisplayName(presetName)}" 프리셋이 적용되었습니다.`, 'success');
+            }
+        }
+
+        // 프리셋 표시 이름
+        function getPresetDisplayName(presetName) {
+            const names = {
+                travel: '여행 블로그',
+                vlog: '브이로그 리뷰',
+                info: '정보성 콘텐츠',
+                story: '스토리텔링'
+            };
+            return names[presetName] || presetName;
+        }
+
         // 설정 불러오기
         async function loadSettings() {
             try {
@@ -431,6 +556,7 @@
                 if (settings.minSubtitleTarget) document.getElementById('min-subtitle-target').value = settings.minSubtitleTarget;
                 if (settings.searchKeywords) document.getElementById('search-keywords').value = settings.searchKeywords;
                 if (settings.channelLimit) document.getElementById('channel-limit').value = settings.channelLimit;
+                if (settings.blogPromptTemplate !== undefined) document.getElementById('blog-prompt-template').value = settings.blogPromptTemplate;
 
                 showStatus('설정을 불러왔습니다.', 'success');
             } catch (error) {
@@ -450,6 +576,7 @@
                 minSubtitleTarget: document.getElementById('min-subtitle-target').value,
                 searchKeywords: document.getElementById('search-keywords').value,
                 channelLimit: document.getElementById('channel-limit').value,
+                blogPromptTemplate: document.getElementById('blog-prompt-template').value
             };
 
             localStorage.setItem('rubberdog-settings', JSON.stringify(settings));

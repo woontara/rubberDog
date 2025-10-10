@@ -127,15 +127,8 @@ class YouTubeBlogApp {
         try {
             uiManager.showLoading('blog-generation-status', '블로그 생성 중...');
 
-            // 자막 텍스트들을 합친 프롬프트 생성
-            const combinedText = selectedSubtitles
-                .map(s => `[${s.title}]\n${s.text}`)
-                .join('\n\n---\n\n');
-
-            const settings = storageManager.getSettings();
-            const guidelines = settings.blogGuidelines || '제공된 자막을 바탕으로 흥미로운 블로그 글을 작성해주세요.';
-
-            const prompt = `${guidelines}\n\n다음은 YouTube 비디오의 자막입니다:\n\n${combinedText}`;
+            // 프롬프트 생성
+            const prompt = this.buildBlogPrompt(selectedSubtitles);
 
             const result = await apiClient.generateBlog(prompt);
 
@@ -236,6 +229,65 @@ class YouTubeBlogApp {
         checkboxes.forEach(cb => {
             cb.checked = selectAllCheckbox.checked;
         });
+    }
+
+    // 블로그 프롬프트 생성 (개선된 템플릿 시스템)
+    buildBlogPrompt(selectedSubtitles) {
+        const settings = storageManager.getSettings();
+
+        // 기본 프롬프트 템플릿
+        const defaultTemplate = {
+            role: "당신은 여행 블로그 전문 작가입니다.",
+            style: "친근하고 생동감 있는 문체로 독자가 현장에 있는 듯한 느낌을 주는 글을 작성합니다.",
+            structure: [
+                "흥미로운 도입부로 독자의 관심을 끌어주세요",
+                "여행지의 특징과 분위기를 생생하게 묘사해주세요",
+                "실용적인 여행 정보(교통, 맛집, 추천 코스 등)를 포함해주세요",
+                "개인적인 경험과 감상을 담아주세요",
+                "독자에게 도움이 될 팁이나 주의사항을 언급해주세요"
+            ],
+            tone: "친근하고 따뜻한",
+            format: "마크다운 형식",
+            length: "2000-3000자 내외"
+        };
+
+        // 사용자 설정 프롬프트 (있으면 우선 사용)
+        let promptTemplate = settings.blogPromptTemplate || null;
+
+        // 프롬프트 구성
+        let systemPrompt = '';
+
+        if (promptTemplate) {
+            // 사용자 정의 프롬프트 사용
+            systemPrompt = promptTemplate;
+        } else {
+            // 기본 템플릿 사용
+            systemPrompt = `${defaultTemplate.role}
+
+**작성 스타일**: ${defaultTemplate.style}
+
+**글 구조**:
+${defaultTemplate.structure.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
+
+**톤**: ${defaultTemplate.tone}
+**형식**: ${defaultTemplate.format}
+**분량**: ${defaultTemplate.length}
+
+아래 YouTube 영상 자막을 바탕으로 위 가이드라인에 맞춰 여행 블로그 글을 작성해주세요.`;
+        }
+
+        // 자막 데이터 추가
+        const subtitleContent = selectedSubtitles
+            .map(s => `## 영상: ${s.title}\n\n${s.text}`)
+            .join('\n\n---\n\n');
+
+        // 최종 프롬프트
+        const finalPrompt = `${systemPrompt}\n\n## 자막 데이터\n\n${subtitleContent}`;
+
+        // 디버깅용 로그
+        console.log('Generated Prompt:', finalPrompt.substring(0, 500) + '...');
+
+        return finalPrompt;
     }
 }
 
