@@ -269,52 +269,6 @@
         </div>
 
         <div class="settings-section">
-            <!-- YouTube API 설정 -->
-            <div class="setting-group">
-                <h2>🔑 YouTube API 설정</h2>
-
-                <div class="setting-item">
-                    <label>Primary API Key</label>
-                    <div class="api-key-input">
-                        <input type="password" id="api-key-primary" placeholder="YouTube API Key 입력">
-                        <button class="toggle-password" onclick="togglePassword('api-key-primary')">표시</button>
-                    </div>
-                    <div class="description">주요 YouTube Data API v3 키</div>
-                </div>
-
-                <div class="setting-item">
-                    <label>Backup API Key</label>
-                    <div class="api-key-input">
-                        <input type="password" id="api-key-backup" placeholder="백업 API Key 입력">
-                        <button class="toggle-password" onclick="togglePassword('api-key-backup')">표시</button>
-                    </div>
-                    <div class="description">할당량 초과시 사용할 백업 키</div>
-                </div>
-
-                <div class="setting-item">
-                    <label>Additional API Key</label>
-                    <div class="api-key-input">
-                        <input type="password" id="api-key-additional" placeholder="추가 API Key 입력">
-                        <button class="toggle-password" onclick="togglePassword('api-key-additional')">표시</button>
-                    </div>
-                    <div class="description">추가 백업 키 (선택사항)</div>
-                </div>
-            </div>
-
-            <!-- MongoDB 설정 -->
-            <div class="setting-group">
-                <h2>🗄️ MongoDB 설정</h2>
-
-                <div class="setting-item">
-                    <label>MongoDB URI</label>
-                    <div class="api-key-input">
-                        <input type="password" id="mongodb-uri" placeholder="mongodb+srv://...">
-                        <button class="toggle-password" onclick="togglePassword('mongodb-uri')">표시</button>
-                    </div>
-                    <div class="description">MongoDB Atlas 연결 문자열</div>
-                </div>
-            </div>
-
             <!-- 자막 수집 설정 -->
             <div class="setting-group">
                 <h2>📝 자막 수집 설정</h2>
@@ -568,10 +522,6 @@
                 // LocalStorage에서 설정 불러오기
                 const settings = JSON.parse(localStorage.getItem('rubberdog-settings') || '{}');
 
-                if (settings.apiKeyPrimary) document.getElementById('api-key-primary').value = settings.apiKeyPrimary;
-                if (settings.apiKeyBackup) document.getElementById('api-key-backup').value = settings.apiKeyBackup;
-                if (settings.apiKeyAdditional) document.getElementById('api-key-additional').value = settings.apiKeyAdditional;
-                if (settings.mongodbUri) document.getElementById('mongodb-uri').value = settings.mongodbUri;
                 if (settings.autoCollect !== undefined) document.getElementById('auto-collect').checked = settings.autoCollect;
                 if (settings.collectInterval) document.getElementById('collect-interval').value = settings.collectInterval;
                 if (settings.minSubtitleTarget) document.getElementById('min-subtitle-target').value = settings.minSubtitleTarget;
@@ -589,10 +539,6 @@
         // 설정 저장
         function saveSettings() {
             const settings = {
-                apiKeyPrimary: document.getElementById('api-key-primary').value,
-                apiKeyBackup: document.getElementById('api-key-backup').value,
-                apiKeyAdditional: document.getElementById('api-key-additional').value,
-                mongodbUri: document.getElementById('mongodb-uri').value,
                 autoCollect: document.getElementById('auto-collect').checked,
                 collectInterval: document.getElementById('collect-interval').value,
                 minSubtitleTarget: document.getElementById('min-subtitle-target').value,
