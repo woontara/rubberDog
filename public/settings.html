@@ -367,6 +367,27 @@
                 <h2>✍️ 블로그 생성 설정</h2>
 
                 <div class="setting-item">
+                    <label>Claude AI 모델 선택</label>
+                    <div class="description" style="margin-bottom: 10px;">
+                        블로그 글 생성에 사용할 Claude AI 모델을 선택합니다.<br>
+                        최신 모델일수록 성능이 좋지만 비용이 높을 수 있습니다.
+                    </div>
+                    <select id="claude-model" style="width: 100%; padding: 10px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px;">
+                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (최신, 추천)</option>
+                        <option value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet (2024-06)</option>
+                        <option value="claude-3-opus-20240229">Claude 3 Opus (최고 품질)</option>
+                        <option value="claude-3-sonnet-20240229">Claude 3 Sonnet (균형)</option>
+                        <option value="claude-3-haiku-20240307">Claude 3 Haiku (빠르고 저렴)</option>
+                    </select>
+                    <div style="margin-top: 8px; padding: 10px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px; font-size: 13px;">
+                        <strong>💡 모델 선택 가이드:</strong><br>
+                        • <strong>Sonnet 3.5</strong>: 균형잡힌 성능, 대부분의 경우 추천<br>
+                        • <strong>Opus</strong>: 최고 품질, 복잡한 글 작성 시 사용<br>
+                        • <strong>Haiku</strong>: 빠른 응답, 간단한 글 작성 시 사용
+                    </div>
+                </div>
+
+                <div class="setting-item">
                     <label>블로그 프롬프트 템플릿</label>
                     <div class="description" style="margin-bottom: 10px;">
                         AI가 블로그 글을 작성할 때 사용할 프롬프트를 설정합니다.<br>
@@ -556,6 +577,7 @@
                 if (settings.minSubtitleTarget) document.getElementById('min-subtitle-target').value = settings.minSubtitleTarget;
                 if (settings.searchKeywords) document.getElementById('search-keywords').value = settings.searchKeywords;
                 if (settings.channelLimit) document.getElementById('channel-limit').value = settings.channelLimit;
+                if (settings.claudeModel) document.getElementById('claude-model').value = settings.claudeModel;
                 if (settings.blogPromptTemplate !== undefined) document.getElementById('blog-prompt-template').value = settings.blogPromptTemplate;
 
                 showStatus('설정을 불러왔습니다.', 'success');
@@ -576,6 +598,7 @@
                 minSubtitleTarget: document.getElementById('min-subtitle-target').value,
                 searchKeywords: document.getElementById('search-keywords').value,
                 channelLimit: document.getElementById('channel-limit').value,
+                claudeModel: document.getElementById('claude-model').value,
                 blogPromptTemplate: document.getElementById('blog-prompt-template').value
             };
 

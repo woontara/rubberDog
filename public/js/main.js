@@ -130,20 +130,22 @@ class YouTubeBlogApp {
             // 설정에서 사용자 정의 템플릿 가져오기
             const settings = storageManager.getSettings();
             const userTemplate = settings.blogPromptTemplate || null;
+            const selectedModel = settings.claudeModel || 'claude-3-5-sonnet-20241022';
 
             // 자막 텍스트 결합
             const combinedSubtitleText = selectedSubtitles
                 .map(s => `## ${s.title}\n\n${s.text}`)
                 .join('\n\n---\n\n');
 
-            // API 호출 (자막 + 설정 전달)
+            // API 호출 (자막 + 설정 + 모델 전달)
             const result = await apiClient.generateBlog({
                 subtitleText: combinedSubtitleText,
                 videoTitle: selectedSubtitles[0]?.title || '여행 영상',
                 videoId: selectedVideoIds[0],
                 channelName: '여행 블로그',
                 userTemplate: userTemplate,
-                usePersona: true
+                usePersona: true,
+                model: selectedModel
             });
 
             if (result.error) {

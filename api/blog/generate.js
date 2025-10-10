@@ -55,7 +55,8 @@ module.exports = async (req, res) => {
       videoId,
       channelName,
       userTemplate,
-      usePersona = true
+      usePersona = true,
+      model = 'claude-3-5-sonnet-20241022'
     } = req.body;
 
     // 입력 유효성 검사
@@ -126,10 +127,11 @@ module.exports = async (req, res) => {
     console.log('📝 사용자 프롬프트 길이:', userPrompt.length);
 
     console.log('🤖 Claude API 호출 시작...');
+    console.log('📝 사용 모델:', model);
 
     // Claude API 호출
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: model,
       max_tokens: 8000,
       temperature: 0.7,
       system: systemPrompt,
