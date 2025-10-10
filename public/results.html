@@ -332,14 +332,85 @@
     </style>
 </head>
 <body>
-    <!-- 사이드바 포함 -->
-    <script>
-        fetch('/sidebar.html')
-            .then(response => response.text())
-            .then(data => {
-                document.body.insertAdjacentHTML('afterbegin', data);
-            });
-    </script>
+    <!-- 사이드바 -->
+    <style>
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            height: 100vh;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-logo {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 10px;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .sidebar-menu a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+
+        .sidebar-menu a.active {
+            background: rgba(255,255,255,0.3);
+            font-weight: 600;
+        }
+
+        .sidebar-menu a .icon {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+        }
+    </style>
+
+    <div class="sidebar">
+        <div class="sidebar-logo">🎬 RubberDog</div>
+        <ul class="sidebar-menu">
+            <li><a href="/index.html"><span class="icon">🏠</span><span>홈</span></a></li>
+            <li><a href="/channels.html"><span class="icon">📋</span><span>채널 목록</span></a></li>
+            <li><a href="/videos.html"><span class="icon">📺</span><span>영상 목록</span></a></li>
+            <li><a href="/results.html" class="active"><span class="icon">📝</span><span>결과 목록</span></a></li>
+            <li><a href="/settings.html"><span class="icon">⚙️</span><span>설정</span></a></li>
+        </ul>
+    </div>
 
     <div class="main-content">
         <div class="container">
