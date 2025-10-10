@@ -46,14 +46,15 @@ class APIClient {
         }
     }
 
-    async generateBlog(prompt) {
+    async generateBlog(options) {
         try {
+            // options: { subtitleText, videoTitle, videoId, channelName, userTemplate, usePersona }
             const response = await fetch('/api/blog/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ prompt })
+                body: JSON.stringify(options)
             });
 
             if (!response.ok) {
