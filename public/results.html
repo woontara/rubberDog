@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블로그 결과 목록 - RubberDog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls select,
+        .controls input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #5568d3;
+        }
+
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .blog-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .blog-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .blog-card-content {
+            padding: 20px;
+        }
+
+        .blog-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .blog-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .blog-channel {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .blog-preview {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .blog-tokens {
+            font-size: 12px;
+            color: #999;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .blog-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-view,
+        .btn-copy,
+        .btn-download {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .btn-view {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #5568d3;
+        }
+
+        .btn-copy {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-copy:hover {
+            background: #218838;
+        }
+
+        .btn-download {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .btn-download:hover {
+            background: #e0a800;
+        }
+
+        .pagination {
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #dc3545;
+        }
+
+        .refresh-btn {
+            margin-left: auto;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            padding: 40px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+
+            .blog-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 포함 -->
+    <script>
+        fetch('/sidebar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.body.insertAdjacentHTML('afterbegin', data);
+            });
+    </script>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="header">
+                <h1>📝 블로그 결과 목록</h1>
+                <p>AI가 생성한 여행 블로그 글 모음</p>
+            </div>
+
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <h3 id="totalPosts">-</h3>
+                    <p>총 블로그 글</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalTokens">-</h3>
+                    <p>총 사용 토큰</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalInputTokens">-</h3>
+                    <p>입력 토큰</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalOutputTokens">-</h3>
+                    <p>출력 토큰</p>
+                </div>
+            </div>
+
+            <div class="controls">
+                <select id="sortBy">
+                    <option value="createdAt" selected>생성일 순</option>
+                    <option value="videoTitle">제목 순</option>
+                </select>
+
+                <select id="order">
+                    <option value="desc" selected>최신 순</option>
+                    <option value="asc">과거 순</option>
+                </select>
+
+                <select id="limit">
+                    <option value="12" selected>12개씩</option>
+                    <option value="24">24개씩</option>
+                    <option value="48">48개씩</option>
+                </select>
+
+                <input type="text" id="keyword" placeholder="검색...">
+
+                <button onclick="applyFilters()">적용</button>
+                <button onclick="loadData()" class="refresh-btn">🔄 새로고침</button>
+            </div>
+
+            <div id="loading" class="loading">데이터를 불러오는 중...</div>
+            <div id="error" class="error" style="display: none;"></div>
+
+            <div class="blog-grid" id="blogGrid" style="display: none;"></div>
+
+            <div class="pagination" id="pagination" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 블로그 상세 모달 -->
+    <div class="modal" id="blogModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">블로그 글</h2>
+            <hr style="margin: 20px 0;">
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let currentLimit = 12;
+        let currentSortBy = 'createdAt';
+        let currentOrder = 'desc';
+        let currentKeyword = '';
+
+        const API_BASE = window.location.origin;
+
+        function formatNumber(num) {
+            if (num >= 100000000) {
+                return (num / 100000000).toFixed(1) + '억';
+            } else if (num >= 10000) {
+                return (num / 10000).toFixed(1) + '만';
+            }
+            return num.toLocaleString();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        async function loadData(page = 1) {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const grid = document.getElementById('blogGrid');
+            const pagination = document.getElementById('pagination');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            grid.style.display = 'none';
+            pagination.style.display = 'none';
+
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: currentLimit,
+                    sortBy: currentSortBy,
+                    order: currentOrder
+                });
+
+                if (currentKeyword) {
+                    params.append('keyword', currentKeyword);
+                }
+
+                const response = await fetch(`${API_BASE}/api/blog/list?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayStats(data.data.statistics);
+                    displayBlogs(data.data.blogPosts);
+                    displayPagination(data.data.pagination);
+
+                    loading.style.display = 'none';
+                    grid.style.display = 'grid';
+                    pagination.style.display = 'flex';
+                } else {
+                    throw new Error(data.error || '데이터를 불러오는데 실패했습니다.');
+                }
+
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = '오류: ' + err.message;
+            }
+        }
+
+        function displayStats(stats) {
+            document.getElementById('totalPosts').textContent = formatNumber(stats.totalPosts);
+            document.getElementById('totalTokens').textContent = formatNumber(stats.totalTokens);
+            document.getElementById('totalInputTokens').textContent = formatNumber(stats.totalInputTokens);
+            document.getElementById('totalOutputTokens').textContent = formatNumber(stats.totalOutputTokens);
+        }
+
+        function displayBlogs(blogs) {
+            const grid = document.getElementById('blogGrid');
+            grid.innerHTML = '';
+
+            blogs.forEach(blog => {
+                const card = document.createElement('div');
+                card.className = 'blog-card';
+
+                // 블로그 내용에서 첫 번째 문단 추출
+                const preview = extractPreview(blog.blogContent);
+
+                card.innerHTML = `
+                    <div class="blog-card-content">
+                        <div class="blog-title">${blog.videoTitle}</div>
+                        <div class="blog-meta">
+                            <span class="blog-channel">${blog.channelName}</span>
+                            <span>${formatDate(blog.createdAt)}</span>
+                        </div>
+                        <div class="blog-preview">${preview}</div>
+                        <div class="blog-tokens">
+                            📊 ${(blog.usage.inputTokens + blog.usage.outputTokens).toLocaleString()} tokens
+                        </div>
+                        <div class="blog-actions">
+                            <button class="btn-view" onclick="viewBlog('${blog._id}')">
+                                자세히 보기
+                            </button>
+                            <button class="btn-copy" onclick="copyBlog('${blog._id}')">
+                                복사
+                            </button>
+                            <button class="btn-download" onclick="downloadBlog('${blog._id}', '${blog.videoTitle}')">
+                                다운로드
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function extractPreview(content) {
+            // 마크다운에서 # 제목 제거 후 첫 200자
+            const textOnly = content
+                .replace(/^#.*$/gm, '')
+                .replace(/\*\*/g, '')
+                .replace(/\n+/g, ' ')
+                .trim();
+            return textOnly.substring(0, 200) + '...';
+        }
+
+        function displayPagination(pagination) {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← 이전';
+            prevBtn.disabled = pagination.page === 1;
+            prevBtn.onclick = () => loadData(pagination.page - 1);
+            paginationDiv.appendChild(prevBtn);
+
+            const startPage = Math.max(1, pagination.page - 2);
+            const endPage = Math.min(pagination.totalPages, pagination.page + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === pagination.page ? 'active' : '';
+                pageBtn.onclick = () => loadData(i);
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '다음 →';
+            nextBtn.disabled = pagination.page === pagination.totalPages;
+            nextBtn.onclick = () => loadData(pagination.page + 1);
+            paginationDiv.appendChild(nextBtn);
+
+            currentPage = pagination.page;
+        }
+
+        async function viewBlog(blogId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/blog/list?blogPostId=${blogId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const blog = data.data.blogPost;
+                    displayBlogModal(blog);
+                }
+            } catch (error) {
+                alert('블로그를 불러오는데 실패했습니다: ' + error.message);
+            }
+        }
+
+        function displayBlogModal(blog) {
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            modalTitle.textContent = blog.videoTitle;
+
+            // 마크다운을 HTML로 변환
+            const htmlContent = convertMarkdownToHtml(blog.blogContent);
+
+            modalContent.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <div style="color: #667eea; font-weight: 600; margin-bottom: 5px;">${blog.channelName}</div>
+                    <div style="color: #999; font-size: 14px;">${formatDate(blog.createdAt)}</div>
+                    <div style="color: #999; font-size: 13px; margin-top: 5px;">
+                        사용 토큰: ${blog.usage.inputTokens.toLocaleString()} (입력) + ${blog.usage.outputTokens.toLocaleString()} (출력)
+                    </div>
+                </div>
+                <hr style="margin: 20px 0;">
+                <div id="blogContent" style="line-height: 1.8;">
+                    ${htmlContent}
+                </div>
+                <div style="margin-top: 30px; display: flex; gap: 10px;">
+                    <button onclick="copyBlogContent('${blog._id}')" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                        📋 복사하기
+                    </button>
+                    <button onclick="downloadBlogContent('${blog._id}', '${blog.videoTitle}')" style="flex: 1; padding: 12px; background: #ffc107; color: #333; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        💾 다운로드
+                    </button>
+                </div>
+                <textarea id="blogRaw_${blog._id}" style="display: none;">${blog.blogContent}</textarea>
+            `;
+
+            document.getElementById('blogModal').classList.add('active');
+        }
+
+        function convertMarkdownToHtml(markdown) {
+            let html = markdown;
+
+            // 제목 변환
+            html = html.replace(/^# (.*$)/gm, '<h1 style="font-size: 28px; margin: 20px 0 15px 0; color: #333;">$1</h1>');
+            html = html.replace(/^## (.*$)/gm, '<h2 style="font-size: 22px; margin: 18px 0 12px 0; color: #444;">$1</h2>');
+            html = html.replace(/^### (.*$)/gm, '<h3 style="font-size: 18px; margin: 15px 0 10px 0; color: #555;">$1</h3>');
+
+            // 볼드 변환
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 600; color: #667eea;">$1</strong>');
+
+            // 리스트 변환
+            html = html.replace(/^- (.*$)/gm, '<li style="margin: 5px 0;">$1</li>');
+            html = html.replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin: 10px 0; padding-left: 25px;">$&</ul>');
+
+            // 수평선
+            html = html.replace(/^---$/gm, '<hr style="border: none; border-top: 2px solid #e0e0e0; margin: 20px 0;">');
+
+            // 줄바꿈
+            html = html.replace(/\n\n/g, '</p><p style="margin: 12px 0; line-height: 1.8;">');
+            html = '<p style="margin: 12px 0; line-height: 1.8;">' + html + '</p>';
+
+            return html;
+        }
+
+        async function copyBlog(blogId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/blog/list?blogPostId=${blogId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const content = data.data.blogPost.blogContent;
+                    await navigator.clipboard.writeText(content);
+                    alert('✅ 블로그 내용이 클립보드에 복사되었습니다!');
+                }
+            } catch (error) {
+                alert('❌ 복사에 실패했습니다: ' + error.message);
+            }
+        }
+
+        function copyBlogContent(blogId) {
+            const content = document.getElementById(`blogRaw_${blogId}`).value;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('✅ 블로그 내용이 클립보드에 복사되었습니다!');
+            }).catch(err => {
+                alert('❌ 복사에 실패했습니다: ' + err.message);
+            });
+        }
+
+        async function downloadBlog(blogId, videoTitle) {
+            try {
+                const response = await fetch(`${API_BASE}/api/blog/list?blogPostId=${blogId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const content = data.data.blogPost.blogContent;
+                    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${videoTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_blog.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                alert('❌ 다운로드에 실패했습니다: ' + error.message);
+            }
+        }
+
+        function downloadBlogContent(blogId, videoTitle) {
+            const content = document.getElementById(`blogRaw_${blogId}`).value;
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${videoTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_blog.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function closeModal() {
+            document.getElementById('blogModal').classList.remove('active');
+        }
+
+        function applyFilters() {
+            currentSortBy = document.getElementById('sortBy').value;
+            currentOrder = document.getElementById('order').value;
+            currentLimit = parseInt(document.getElementById('limit').value);
+            currentKeyword = document.getElementById('keyword').value.trim();
+            loadData(1);
+        }
+
+        // Enter 키로 검색
+        document.getElementById('keyword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+
+        // 페이지 로드시 데이터 불러오기
+        loadData();
+
+        // 5분마다 자동 새로고침
+        setInterval(() => {
+            loadData(currentPage);
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

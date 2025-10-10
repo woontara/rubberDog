@@ -1278,6 +1278,98 @@ function handleApiRequest(req, res, pathname) {
       }
     });
 
+  // 채널 목록 조회
+  } else if (pathname === '/api/channels/list' && req.method === 'GET') {
+    console.log('📋 채널 목록 조회 요청');
+    (async () => {
+      try {
+        const channelListAPI = require('../api/channels/list.js');
+
+        const mockReq = {
+          method: 'GET',
+          query: require('url').parse(req.url, true).query
+        };
+
+        const mockRes = {
+          setHeader: (key, value) => res.setHeader(key, value),
+          status: (code) => ({
+            json: (data) => {
+              res.writeHead(code, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              });
+              res.end(JSON.stringify(data));
+            },
+            end: () => {
+              res.writeHead(code, {
+                'Access-Control-Allow-Origin': '*'
+              });
+              res.end();
+            }
+          })
+        };
+
+        await channelListAPI(mockReq, mockRes);
+      } catch (apiError) {
+        console.log('❌ 채널 목록 API 오류:', apiError);
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          success: false,
+          error: 'API_ERROR',
+          message: apiError.message
+        }));
+      }
+    })();
+
+  // 영상 목록 조회
+  } else if (pathname === '/api/videos/list' && req.method === 'GET') {
+    console.log('🎬 영상 목록 조회 요청');
+    (async () => {
+      try {
+        const videoListAPI = require('../api/videos/list.js');
+
+        const mockReq = {
+          method: 'GET',
+          query: require('url').parse(req.url, true).query
+        };
+
+        const mockRes = {
+          setHeader: (key, value) => res.setHeader(key, value),
+          status: (code) => ({
+            json: (data) => {
+              res.writeHead(code, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              });
+              res.end(JSON.stringify(data));
+            },
+            end: () => {
+              res.writeHead(code, {
+                'Access-Control-Allow-Origin': '*'
+              });
+              res.end();
+            }
+          })
+        };
+
+        await videoListAPI(mockReq, mockRes);
+      } catch (apiError) {
+        console.log('❌ 영상 목록 API 오류:', apiError);
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          success: false,
+          error: 'API_ERROR',
+          message: apiError.message
+        }));
+      }
+    })();
+
   // 블로그 생성
   } else if (pathname === '/api/blog/generate' && req.method === 'POST') {
     console.log('블로그 생성 요청 받음:', pathname);

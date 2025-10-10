@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수집된 영상 및 자막 목록 - RubberDog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls select,
+        .controls input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #5568d3;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .video-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .video-content {
+            padding: 15px;
+        }
+
+        .video-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-channel {
+            font-size: 14px;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .video-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .subtitle-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .subtitle-yes {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .subtitle-no {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .subtitle-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .subtitle-failed {
+            background: #f5c6cb;
+            color: #721c24;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-view {
+            flex: 1;
+            padding: 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .btn-view:hover {
+            background: #5568d3;
+        }
+
+        .btn-subtitle {
+            flex: 1;
+            padding: 8px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .btn-subtitle:hover {
+            background: #218838;
+        }
+
+        .btn-subtitle:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-analyze {
+            flex: 1;
+            padding: 8px;
+            background: #ffc107;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn-analyze:hover {
+            background: #e0a800;
+        }
+
+        .btn-analyze:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            color: #666;
+        }
+
+        .pagination {
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #dc3545;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .subtitle-text {
+            white-space: pre-wrap;
+            line-height: 1.8;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .refresh-btn {
+            margin-left: auto;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 포함 -->
+    <script>
+        fetch('/sidebar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.body.insertAdjacentHTML('afterbegin', data);
+            });
+    </script>
+
+    <div class="main-content">
+    <div class="container">
+        <div class="header">
+            <h1>🎬 수집된 영상 및 자막</h1>
+            <p>YouTube 영상 자동 수집 및 자막 관리 시스템</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <h3 id="totalVideos">-</h3>
+                <p>총 영상 수</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="videosWithSubtitle">-</h3>
+                <p>자막 보유</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="videosNoSubtitle">-</h3>
+                <p>자막 없음</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="videosPending">-</h3>
+                <p>수집 대기</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalViews">-</h3>
+                <p>총 조회수</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <select id="channelFilter">
+                <option value="">모든 채널</option>
+            </select>
+
+            <select id="subtitleFilter">
+                <option value="">모든 상태</option>
+                <option value="true">자막 있음</option>
+                <option value="false">자막 없음</option>
+            </select>
+
+            <select id="statusFilter">
+                <option value="">모든 처리상태</option>
+                <option value="completed">완료</option>
+                <option value="pending">대기</option>
+                <option value="no_subtitle">자막없음</option>
+                <option value="failed">실패</option>
+            </select>
+
+            <select id="sortBy">
+                <option value="publishedAt">발행일 순</option>
+                <option value="viewCount">조회수 순</option>
+                <option value="likeCount">좋아요 순</option>
+                <option value="createdAt">수집일 순</option>
+            </select>
+
+            <select id="order">
+                <option value="desc" selected>높은 순</option>
+                <option value="asc">낮은 순</option>
+            </select>
+
+            <select id="limit">
+                <option value="12" selected>12개씩</option>
+                <option value="24">24개씩</option>
+                <option value="48">48개씩</option>
+            </select>
+
+            <input type="text" id="keyword" placeholder="영상 제목 검색...">
+
+            <button onclick="applyFilters()">적용</button>
+            <button onclick="loadData()" class="refresh-btn">🔄 새로고침</button>
+        </div>
+
+        <div id="loading" class="loading">데이터를 불러오는 중...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div class="video-grid" id="videoGrid" style="display: none;"></div>
+
+        <div class="pagination" id="pagination" style="display: none;"></div>
+    </div>
+
+    <!-- 자막 모달 -->
+    <div class="modal" id="subtitleModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">영상 자막</h2>
+            <hr style="margin: 20px 0;">
+            <div id="modalSubtitle" class="subtitle-text"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let currentLimit = 12;
+        let currentChannelId = '';
+        let currentHasSubtitle = '';
+        let currentStatus = '';
+        let currentSortBy = 'publishedAt';
+        let currentOrder = 'desc';
+        let currentKeyword = '';
+
+        const API_BASE = window.location.origin;
+
+        function formatNumber(num) {
+            if (num >= 100000000) {
+                return (num / 100000000).toFixed(1) + '억';
+            } else if (num >= 10000) {
+                return (num / 10000).toFixed(1) + '만';
+            }
+            return num.toLocaleString();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        function getSubtitleBadge(video) {
+            if (video.hasSubtitle) {
+                return '<span class="subtitle-badge subtitle-yes">자막 있음</span>';
+            } else if (video.subtitleStatus === 'no_subtitle') {
+                return '<span class="subtitle-badge subtitle-no">자막 없음</span>';
+            } else if (video.subtitleStatus === 'pending') {
+                return '<span class="subtitle-badge subtitle-pending">수집 대기</span>';
+            } else if (video.subtitleStatus === 'failed') {
+                return '<span class="subtitle-badge subtitle-failed">수집 실패</span>';
+            }
+            return '<span class="subtitle-badge subtitle-pending">대기</span>';
+        }
+
+        async function loadChannels() {
+            try {
+                const response = await fetch(`${API_BASE}/api/channels/list?limit=100&sortBy=subscriberCount&order=desc`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const select = document.getElementById('channelFilter');
+                    data.data.channels.forEach(channel => {
+                        const option = document.createElement('option');
+                        option.value = channel.channelId;
+                        option.textContent = channel.channelName;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('채널 목록 로드 실패:', error);
+            }
+        }
+
+        async function loadData(page = 1) {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const grid = document.getElementById('videoGrid');
+            const pagination = document.getElementById('pagination');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            grid.style.display = 'none';
+            pagination.style.display = 'none';
+
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: currentLimit,
+                    sortBy: currentSortBy,
+                    order: currentOrder
+                });
+
+                if (currentChannelId) params.append('channelId', currentChannelId);
+                if (currentHasSubtitle) params.append('hasSubtitle', currentHasSubtitle);
+                if (currentStatus) params.append('subtitleStatus', currentStatus);
+                if (currentKeyword) params.append('keyword', currentKeyword);
+
+                const response = await fetch(`${API_BASE}/api/videos/list?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayStats(data.data.statistics);
+                    displayVideos(data.data.videos);
+                    displayPagination(data.data.pagination);
+
+                    loading.style.display = 'none';
+                    grid.style.display = 'grid';
+                    pagination.style.display = 'flex';
+                } else {
+                    throw new Error(data.error || '데이터를 불러오는데 실패했습니다.');
+                }
+
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = '오류: ' + err.message;
+            }
+        }
+
+        function displayStats(stats) {
+            document.getElementById('totalVideos').textContent = formatNumber(stats.totalVideos);
+            document.getElementById('videosWithSubtitle').textContent = formatNumber(stats.videosWithSubtitle);
+            document.getElementById('videosNoSubtitle').textContent = formatNumber(stats.videosNoSubtitle);
+            document.getElementById('videosPending').textContent = formatNumber(stats.videosPending);
+            document.getElementById('totalViews').textContent = formatNumber(stats.totalViews);
+        }
+
+        function displayVideos(videos) {
+            const grid = document.getElementById('videoGrid');
+            grid.innerHTML = '';
+
+            videos.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <img src="${video.thumbnail || 'https://via.placeholder.com/320x180'}"
+                         alt="${video.title}"
+                         class="video-thumbnail"
+                         onerror="this.src='https://via.placeholder.com/320x180'">
+                    <div class="video-content">
+                        <div class="video-title">${video.title}</div>
+                        <div class="video-channel">${video.channelName}</div>
+                        <div class="video-meta">
+                            <span>조회수 ${formatNumber(video.viewCount)}</span>
+                            <span>${formatDate(video.publishedAt)}</span>
+                        </div>
+                        ${getSubtitleBadge(video)}
+                        <div class="video-actions">
+                            <button class="btn-view" onclick="window.open('${video.videoUrl}', '_blank')">
+                                영상 보기
+                            </button>
+                            <button class="btn-subtitle"
+                                    ${!video.hasSubtitle ? 'disabled' : ''}
+                                    onclick="showSubtitle('${video.videoId}', '${video.title}')">
+                                자막 보기
+                            </button>
+                            <button class="btn-analyze"
+                                    ${!video.hasSubtitle ? 'disabled' : ''}
+                                    onclick="analyzeSubtitle('${video.videoId}', '${video.title}')">
+                                자막 분석
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function displayPagination(pagination) {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← 이전';
+            prevBtn.disabled = pagination.page === 1;
+            prevBtn.onclick = () => loadData(pagination.page - 1);
+            paginationDiv.appendChild(prevBtn);
+
+            const startPage = Math.max(1, pagination.page - 2);
+            const endPage = Math.min(pagination.totalPages, pagination.page + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === pagination.page ? 'active' : '';
+                pageBtn.onclick = () => loadData(i);
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '다음 →';
+            nextBtn.disabled = pagination.page === pagination.totalPages;
+            nextBtn.onclick = () => loadData(pagination.page + 1);
+            paginationDiv.appendChild(nextBtn);
+
+            currentPage = pagination.page;
+        }
+
+        async function showSubtitle(videoId, title) {
+            try {
+                const response = await fetch(`${API_BASE}/api/videos/list?videoId=${videoId}&limit=1`);
+                const data = await response.json();
+
+                if (data.success && data.data.videos.length > 0) {
+                    const video = data.data.videos[0];
+                    document.getElementById('modalTitle').textContent = title;
+                    document.getElementById('modalSubtitle').textContent = video.subtitleText || '자막을 불러올 수 없습니다.';
+                    document.getElementById('subtitleModal').classList.add('active');
+                }
+            } catch (error) {
+                alert('자막을 불러오는데 실패했습니다.');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('subtitleModal').classList.remove('active');
+        }
+
+        async function analyzeSubtitle(videoId, title) {
+            try {
+                // 자막 데이터 가져오기
+                const response = await fetch(`${API_BASE}/api/videos/list?videoId=${videoId}&limit=1`);
+                const data = await response.json();
+
+                if (data.success && data.data.videos.length > 0) {
+                    const video = data.data.videos[0];
+                    const subtitleText = video.subtitleText;
+
+                    if (!subtitleText) {
+                        alert('자막을 불러올 수 없습니다.');
+                        return;
+                    }
+
+                    // 간단한 알림
+                    alert('🤖 백그라운드에서 블로그 글을 생성 중입니다...\n완료되면 결과 목록 페이지로 이동합니다.');
+
+                    // 블로그 생성 API 호출
+                    const blogResponse = await fetch(`${API_BASE}/api/blog/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            subtitleText: subtitleText,
+                            videoTitle: title,
+                            videoId: videoId,
+                            channelName: video.channelName
+                        })
+                    });
+
+                    const blogData = await blogResponse.json();
+
+                    if (blogData.success) {
+                        // 결과 목록 페이지로 리다이렉트
+                        alert('✅ 블로그 글이 생성되었습니다!');
+                        window.location.href = '/results.html';
+                    } else {
+                        throw new Error(blogData.error || '블로그 생성에 실패했습니다.');
+                    }
+                }
+            } catch (error) {
+                alert('❌ 블로그 생성에 실패했습니다: ' + error.message);
+            }
+        }
+
+        function showLoadingModal(message) {
+            const modalTitle = document.getElementById('modalTitle');
+            const modalSubtitle = document.getElementById('modalSubtitle');
+
+            modalTitle.textContent = '🤖 AI 블로그 생성 중...';
+            modalSubtitle.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+                    <div style="font-size: 18px; color: #667eea; font-weight: 600; margin-bottom: 10px;">
+                        ${message}
+                    </div>
+                    <div style="color: #999; font-size: 14px;">
+                        잠시만 기다려주세요... (약 10-20초 소요)
+                    </div>
+                    <div style="margin-top: 30px;">
+                        <div style="width: 200px; height: 4px; background: #f0f0f0; border-radius: 2px; margin: 0 auto; overflow: hidden;">
+                            <div style="width: 100%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); animation: loading 1.5s infinite;"></div>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes loading {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(100%); }
+                    }
+                </style>
+            `;
+            document.getElementById('subtitleModal').classList.add('active');
+        }
+
+        function displayBlogResult(videoTitle, blogContent, usage) {
+            const modalTitle = document.getElementById('modalTitle');
+            const modalSubtitle = document.getElementById('modalSubtitle');
+
+            modalTitle.textContent = `✅ 블로그 글 생성 완료`;
+
+            // 마크다운을 HTML로 간단히 변환 (기본적인 변환만)
+            const htmlContent = convertMarkdownToHtml(blogContent);
+
+            modalSubtitle.innerHTML = `
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: #333;">📝 생성된 블로그 글</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="copyBlogContent()" style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                📋 복사하기
+                            </button>
+                            <button onclick="downloadBlogContent('${videoTitle}')" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                💾 다운로드
+                            </button>
+                        </div>
+                    </div>
+                    <div style="color: #666; font-size: 13px;">
+                        <span>사용 토큰: ${usage.inputTokens.toLocaleString()} (입력) + ${usage.outputTokens.toLocaleString()} (출력)</span>
+                    </div>
+                </div>
+
+                <div id="blogContentDisplay" style="background: white; padding: 30px; border-radius: 10px; max-height: 600px; overflow-y: auto; line-height: 1.8;">
+                    ${htmlContent}
+                </div>
+
+                <textarea id="blogContentRaw" style="display: none;">${blogContent}</textarea>
+            `;
+
+            document.getElementById('subtitleModal').classList.add('active');
+        }
+
+        function convertMarkdownToHtml(markdown) {
+            let html = markdown;
+
+            // 제목 변환
+            html = html.replace(/^# (.*$)/gm, '<h1 style="font-size: 28px; margin: 20px 0 15px 0; color: #333;">$1</h1>');
+            html = html.replace(/^## (.*$)/gm, '<h2 style="font-size: 22px; margin: 18px 0 12px 0; color: #444;">$1</h2>');
+            html = html.replace(/^### (.*$)/gm, '<h3 style="font-size: 18px; margin: 15px 0 10px 0; color: #555;">$1</h3>');
+
+            // 볼드 변환
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 600; color: #667eea;">$1</strong>');
+
+            // 리스트 변환
+            html = html.replace(/^- (.*$)/gm, '<li style="margin: 5px 0;">$1</li>');
+            html = html.replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin: 10px 0; padding-left: 25px;">$&</ul>');
+
+            // 수평선
+            html = html.replace(/^---$/gm, '<hr style="border: none; border-top: 2px solid #e0e0e0; margin: 20px 0;">');
+
+            // 줄바꿈
+            html = html.replace(/\n\n/g, '</p><p style="margin: 12px 0; line-height: 1.8;">');
+            html = '<p style="margin: 12px 0; line-height: 1.8;">' + html + '</p>';
+
+            return html;
+        }
+
+        function copyBlogContent() {
+            const content = document.getElementById('blogContentRaw').value;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('✅ 블로그 내용이 클립보드에 복사되었습니다!');
+            }).catch(err => {
+                alert('❌ 복사에 실패했습니다: ' + err.message);
+            });
+        }
+
+        function downloadBlogContent(videoTitle) {
+            const content = document.getElementById('blogContentRaw').value;
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${videoTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_blog.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function applyFilters() {
+            currentChannelId = document.getElementById('channelFilter').value;
+            currentHasSubtitle = document.getElementById('subtitleFilter').value;
+            currentStatus = document.getElementById('statusFilter').value;
+            currentSortBy = document.getElementById('sortBy').value;
+            currentOrder = document.getElementById('order').value;
+            currentLimit = parseInt(document.getElementById('limit').value);
+            currentKeyword = document.getElementById('keyword').value.trim();
+            loadData(1);
+        }
+
+        document.getElementById('keyword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+
+        // 초기 로드
+        loadChannels();
+        loadData();
+
+        // 5분마다 자동 새로고침
+        setInterval(() => {
+            loadData(currentPage);
+        }, 5 * 60 * 1000);
+    </script>
+    </div>
+</body>
+</html>

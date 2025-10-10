@@ -1,0 +1,184 @@
+<style>
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 250px;
+        height: 100vh;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar-hidden {
+        transform: translateX(-100%);
+    }
+
+    .sidebar-toggle {
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1001;
+    }
+
+    .sidebar-logo {
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 30px;
+        text-align: center;
+        padding-bottom: 20px;
+        border-bottom: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .sidebar-menu {
+        list-style: none;
+    }
+
+    .sidebar-menu li {
+        margin-bottom: 10px;
+    }
+
+    .sidebar-menu a {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: all 0.3s;
+        font-size: 16px;
+    }
+
+    .sidebar-menu a:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateX(5px);
+    }
+
+    .sidebar-menu a.active {
+        background: rgba(255,255,255,0.3);
+        font-weight: 600;
+    }
+
+    .sidebar-menu a .icon {
+        margin-right: 10px;
+        font-size: 20px;
+    }
+
+    .main-content {
+        margin-left: 250px;
+        transition: margin-left 0.3s ease;
+    }
+
+    .main-content-expanded {
+        margin-left: 0;
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            transform: translateX(-100%);
+        }
+
+        .sidebar.active {
+            transform: translateX(0);
+        }
+
+        .sidebar-toggle {
+            display: flex;
+        }
+
+        .main-content {
+            margin-left: 0;
+        }
+    }
+</style>
+
+<!-- 사이드바 토글 버튼 (모바일) -->
+<button class="sidebar-toggle" onclick="toggleSidebar()">
+    ☰
+</button>
+
+<!-- 사이드바 -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        🎬 RubberDog
+    </div>
+
+    <ul class="sidebar-menu">
+        <li>
+            <a href="/index.html" id="nav-home">
+                <span class="icon">🏠</span>
+                <span>홈</span>
+            </a>
+        </li>
+        <li>
+            <a href="/channels.html" id="nav-channels">
+                <span class="icon">📋</span>
+                <span>채널 목록</span>
+            </a>
+        </li>
+        <li>
+            <a href="/videos.html" id="nav-videos">
+                <span class="icon">📺</span>
+                <span>영상 목록</span>
+            </a>
+        </li>
+        <li>
+            <a href="/results.html" id="nav-results">
+                <span class="icon">📝</span>
+                <span>결과 목록</span>
+            </a>
+        </li>
+        <li>
+            <a href="/settings.html" id="nav-settings">
+                <span class="icon">⚙️</span>
+                <span>설정</span>
+            </a>
+        </li>
+    </ul>
+</div>
+
+<script>
+    // 현재 페이지 활성화 표시
+    function setActivePage() {
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        const links = document.querySelectorAll('.sidebar-menu a');
+
+        links.forEach(link => {
+            const href = link.getAttribute('href').substring(1); // Remove leading /
+            if (href === currentPage) {
+                link.classList.add('active');
+            }
+        });
+    }
+
+    // 사이드바 토글 (모바일)
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('active');
+    }
+
+    // 페이지 로드시 활성 페이지 설정
+    setActivePage();
+
+    // 모바일에서 링크 클릭시 사이드바 닫기
+    if (window.innerWidth <= 768) {
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('sidebar').classList.remove('active');
+            });
+        });
+    }
+</script>

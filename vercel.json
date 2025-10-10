@@ -35,6 +35,56 @@
     {
       "src": "/api/youtube/subtitle-upload-local",
       "dest": "/api/youtube/subtitle_upload_local.js"
+    },
+    {
+      "src": "/api/cron/collect-channels",
+      "dest": "/api/cron/collect-channels.js"
+    },
+    {
+      "src": "/api/channels/list",
+      "dest": "/api/channels/list.js"
+    },
+    {
+      "src": "/api/channels/update-priority",
+      "dest": "/api/channels/update-priority.js"
+    },
+    {
+      "src": "/api/channels/delete",
+      "dest": "/api/channels/delete.js"
+    },
+    {
+      "src": "/api/cron/collect-subtitles",
+      "dest": "/api/cron/collect-subtitles.js"
+    },
+    {
+      "src": "/api/videos/list",
+      "dest": "/api/videos/list.js"
+    },
+    {
+      "src": "/api/blog/generate",
+      "dest": "/api/blog/generate.js"
+    },
+    {
+      "src": "/api/blog/list",
+      "dest": "/api/blog/list.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/collect-channels",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/collect-channels",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/collect-subtitles",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/collect-subtitles",
+      "schedule": "0 14 * * *"
     }
   ],
   "public": true

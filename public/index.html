@@ -16,12 +16,25 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
         }
 
         .header {
@@ -570,6 +583,16 @@
     </style>
 </head>
 <body>
+    <!-- 사이드바 포함 -->
+    <script>
+        fetch('/sidebar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.body.insertAdjacentHTML('afterbegin', data);
+            });
+    </script>
+
+    <div class="main-content">
     <div class="container">
         <div class="header">
             <h1>🐕 RubberDog</h1>
@@ -1557,5 +1580,6 @@
             document.getElementById('filter-travel').addEventListener('change', applyFilters);
         });
     </script>
+    </div>
 </body>
 </html>

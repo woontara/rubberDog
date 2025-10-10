@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>설정 - RubberDog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .settings-section {
+            padding: 30px;
+        }
+
+        .setting-group {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .setting-group h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+        }
+
+        .setting-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-item label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .setting-item input[type="text"],
+        .setting-item input[type="number"],
+        .setting-item select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .setting-item input:focus,
+        .setting-item select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .setting-item .description {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e1e5e9;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5d9;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .api-key-input {
+            position: relative;
+        }
+
+        .api-key-input input {
+            padding-right: 100px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 5px 10px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 포함 -->
+    <script>
+        fetch('/sidebar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.body.insertAdjacentHTML('afterbegin', data);
+            });
+    </script>
+
+    <div class="main-content">
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ 설정</h1>
+            <p>RubberDog 시스템 설정 및 관리</p>
+        </div>
+
+        <div class="settings-section">
+            <!-- YouTube API 설정 -->
+            <div class="setting-group">
+                <h2>🔑 YouTube API 설정</h2>
+
+                <div class="setting-item">
+                    <label>Primary API Key</label>
+                    <div class="api-key-input">
+                        <input type="password" id="api-key-primary" placeholder="YouTube API Key 입력">
+                        <button class="toggle-password" onclick="togglePassword('api-key-primary')">표시</button>
+                    </div>
+                    <div class="description">주요 YouTube Data API v3 키</div>
+                </div>
+
+                <div class="setting-item">
+                    <label>Backup API Key</label>
+                    <div class="api-key-input">
+                        <input type="password" id="api-key-backup" placeholder="백업 API Key 입력">
+                        <button class="toggle-password" onclick="togglePassword('api-key-backup')">표시</button>
+                    </div>
+                    <div class="description">할당량 초과시 사용할 백업 키</div>
+                </div>
+
+                <div class="setting-item">
+                    <label>Additional API Key</label>
+                    <div class="api-key-input">
+                        <input type="password" id="api-key-additional" placeholder="추가 API Key 입력">
+                        <button class="toggle-password" onclick="togglePassword('api-key-additional')">표시</button>
+                    </div>
+                    <div class="description">추가 백업 키 (선택사항)</div>
+                </div>
+            </div>
+
+            <!-- MongoDB 설정 -->
+            <div class="setting-group">
+                <h2>🗄️ MongoDB 설정</h2>
+
+                <div class="setting-item">
+                    <label>MongoDB URI</label>
+                    <div class="api-key-input">
+                        <input type="password" id="mongodb-uri" placeholder="mongodb+srv://...">
+                        <button class="toggle-password" onclick="togglePassword('mongodb-uri')">표시</button>
+                    </div>
+                    <div class="description">MongoDB Atlas 연결 문자열</div>
+                </div>
+            </div>
+
+            <!-- 자막 수집 설정 -->
+            <div class="setting-group">
+                <h2>📝 자막 수집 설정</h2>
+
+                <div class="setting-item">
+                    <label>자동 수집 활성화</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-collect" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="description">Cron Job을 통한 자동 자막 수집 활성화/비활성화</div>
+                </div>
+
+                <div class="setting-item">
+                    <label>수집 주기</label>
+                    <select id="collect-interval">
+                        <option value="6">6시간마다</option>
+                        <option value="12" selected>12시간마다</option>
+                        <option value="24">24시간마다</option>
+                    </select>
+                    <div class="description">자막 자동 수집 주기</div>
+                </div>
+
+                <div class="setting-item">
+                    <label>최소 자막 수집 목표</label>
+                    <input type="number" id="min-subtitle-target" value="10" min="1" max="100">
+                    <div class="description">한 번 실행시 수집할 최소 자막 개수</div>
+                </div>
+            </div>
+
+            <!-- 채널 수집 설정 -->
+            <div class="setting-group">
+                <h2>🎥 채널 수집 설정</h2>
+
+                <div class="setting-item">
+                    <label>채널 검색 키워드</label>
+                    <input type="text" id="search-keywords" value="한국 여행, 여행 브이로그, 해외여행" placeholder="쉼표로 구분">
+                    <div class="description">채널 검색에 사용할 키워드 (쉼표로 구분)</div>
+                </div>
+
+                <div class="setting-item">
+                    <label>채널 수집 제한</label>
+                    <input type="number" id="channel-limit" value="50" min="10" max="200">
+                    <div class="description">최대 수집할 채널 개수</div>
+                </div>
+            </div>
+
+            <!-- 시스템 관리 -->
+            <div class="setting-group">
+                <h2>🛠️ 시스템 관리</h2>
+
+                <div class="setting-item">
+                    <label>데이터베이스 초기화</label>
+                    <div class="description" style="margin-bottom: 10px;">모든 영상 데이터를 삭제하고 처음부터 다시 수집합니다.</div>
+                    <button class="btn btn-danger" onclick="resetDatabase()">
+                        데이터베이스 초기화
+                    </button>
+                </div>
+
+                <div class="setting-item">
+                    <label>즉시 자막 수집</label>
+                    <div class="description" style="margin-bottom: 10px;">현재 설정으로 즉시 자막 수집을 실행합니다.</div>
+                    <button class="btn btn-secondary" onclick="collectNow()">
+                        수집 시작
+                    </button>
+                </div>
+            </div>
+
+            <!-- 저장 버튼 -->
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    💾 설정 저장
+                </button>
+                <button class="btn btn-secondary" onclick="loadSettings()">
+                    🔄 설정 불러오기
+                </button>
+            </div>
+
+            <!-- 상태 메시지 -->
+            <div id="status-message" class="status-message"></div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        // 비밀번호 표시/숨김 토글
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = event.target;
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '숨김';
+            } else {
+                input.type = 'password';
+                button.textContent = '표시';
+            }
+        }
+
+        // 설정 불러오기
+        async function loadSettings() {
+            try {
+                // LocalStorage에서 설정 불러오기
+                const settings = JSON.parse(localStorage.getItem('rubberdog-settings') || '{}');
+
+                if (settings.apiKeyPrimary) document.getElementById('api-key-primary').value = settings.apiKeyPrimary;
+                if (settings.apiKeyBackup) document.getElementById('api-key-backup').value = settings.apiKeyBackup;
+                if (settings.apiKeyAdditional) document.getElementById('api-key-additional').value = settings.apiKeyAdditional;
+                if (settings.mongodbUri) document.getElementById('mongodb-uri').value = settings.mongodbUri;
+                if (settings.autoCollect !== undefined) document.getElementById('auto-collect').checked = settings.autoCollect;
+                if (settings.collectInterval) document.getElementById('collect-interval').value = settings.collectInterval;
+                if (settings.minSubtitleTarget) document.getElementById('min-subtitle-target').value = settings.minSubtitleTarget;
+                if (settings.searchKeywords) document.getElementById('search-keywords').value = settings.searchKeywords;
+                if (settings.channelLimit) document.getElementById('channel-limit').value = settings.channelLimit;
+
+                showStatus('설정을 불러왔습니다.', 'success');
+            } catch (error) {
+                showStatus('설정을 불러오는데 실패했습니다.', 'error');
+            }
+        }
+
+        // 설정 저장
+        function saveSettings() {
+            const settings = {
+                apiKeyPrimary: document.getElementById('api-key-primary').value,
+                apiKeyBackup: document.getElementById('api-key-backup').value,
+                apiKeyAdditional: document.getElementById('api-key-additional').value,
+                mongodbUri: document.getElementById('mongodb-uri').value,
+                autoCollect: document.getElementById('auto-collect').checked,
+                collectInterval: document.getElementById('collect-interval').value,
+                minSubtitleTarget: document.getElementById('min-subtitle-target').value,
+                searchKeywords: document.getElementById('search-keywords').value,
+                channelLimit: document.getElementById('channel-limit').value,
+            };
+
+            localStorage.setItem('rubberdog-settings', JSON.stringify(settings));
+            showStatus('설정이 저장되었습니다.', 'success');
+        }
+
+        // 데이터베이스 초기화
+        async function resetDatabase() {
+            if (!confirm('정말로 모든 영상 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+
+            if (!confirm('한 번 더 확인합니다. 모든 데이터가 삭제됩니다.')) {
+                return;
+            }
+
+            showStatus('데이터베이스 초기화 중...', 'success');
+
+            // TODO: 서버 API 호출
+            setTimeout(() => {
+                showStatus('데이터베이스가 초기화되었습니다.', 'success');
+            }, 2000);
+        }
+
+        // 즉시 수집 시작
+        async function collectNow() {
+            if (!confirm('자막 수집을 즉시 시작하시겠습니까?')) {
+                return;
+            }
+
+            showStatus('자막 수집을 시작합니다...', 'success');
+
+            // TODO: 서버 API 호출
+            setTimeout(() => {
+                showStatus('자막 수집이 시작되었습니다.', 'success');
+            }, 1000);
+        }
+
+        // 상태 메시지 표시
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${type}`;
+            statusDiv.style.display = 'block';
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // 페이지 로드시 설정 불러오기
+        loadSettings();
+    </script>
+</body>
+</html>

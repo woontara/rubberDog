@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수집된 YouTube 채널 목록 - RubberDog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls select,
+        .controls input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #5568d3;
+        }
+
+        .table-container {
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tbody tr {
+            cursor: move;
+            transition: all 0.3s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr.dragging {
+            opacity: 0.5;
+        }
+
+        tbody tr.drag-over {
+            border-top: 3px solid #667eea;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .drag-handle {
+            cursor: pointer;
+            color: #999;
+            font-size: 18px;
+            padding: 5px;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: pointer;
+        }
+
+        .delete-btn {
+            padding: 5px 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .channel-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .channel-thumbnail {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .channel-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        .channel-link:hover {
+            text-decoration: underline;
+        }
+
+        .number {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-collected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .pagination {
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #dc3545;
+        }
+
+        .description {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .refresh-btn {
+            margin-left: auto;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 포함 -->
+    <script>
+        fetch('/sidebar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.body.insertAdjacentHTML('afterbegin', data);
+            });
+    </script>
+
+    <div class="main-content">
+    <div class="container">
+        <div class="header">
+            <h1>🎥 수집된 YouTube 채널</h1>
+            <p>한국 여행 채널 자동 수집 시스템</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <h3 id="totalChannels">-</h3>
+                <p>총 채널 수</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalSubscribers">-</h3>
+                <p>총 구독자</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="avgSubscribers">-</h3>
+                <p>평균 구독자</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalVideos">-</h3>
+                <p>총 영상</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalViews">-</h3>
+                <p>총 조회수</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <select id="sortBy">
+                <option value="priority" selected>우선순위 순</option>
+                <option value="createdAt">수집일 순</option>
+                <option value="subscriberCount">구독자 순</option>
+                <option value="videoCount">영상 개수 순</option>
+                <option value="viewCount">조회수 순</option>
+            </select>
+
+            <select id="order">
+                <option value="asc" selected>낮은 순</option>
+                <option value="desc">높은 순</option>
+            </select>
+
+            <select id="limit">
+                <option value="10">10개씩</option>
+                <option value="20" selected>20개씩</option>
+                <option value="50">50개씩</option>
+                <option value="100">100개씩</option>
+            </select>
+
+            <input type="text" id="keyword" placeholder="채널명 검색...">
+
+            <button onclick="applyFilters()">적용</button>
+            <button onclick="loadData()" class="refresh-btn">🔄 새로고침</button>
+        </div>
+
+        <div class="table-container">
+            <div id="loading" class="loading">데이터를 불러오는 중...</div>
+            <div id="error" class="error" style="display: none;"></div>
+
+            <table id="channelTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th style="width: 50px;">순위</th>
+                        <th>채널 정보</th>
+                        <th>구독자</th>
+                        <th>영상</th>
+                        <th>조회수</th>
+                        <th>검색 키워드</th>
+                        <th>수집일</th>
+                        <th>상태</th>
+                        <th style="width: 80px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="channelTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination" id="pagination" style="display: none;"></div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let currentLimit = 20;
+        let currentSortBy = 'priority';
+        let currentOrder = 'asc';
+        let currentKeyword = '';
+
+        // API 엔드포인트 (현재 배포된 URL로 자동 설정)
+        const API_BASE = window.location.origin;
+
+        function formatNumber(num) {
+            if (num >= 100000000) {
+                return (num / 100000000).toFixed(1) + '억';
+            } else if (num >= 10000) {
+                return (num / 10000).toFixed(1) + '만';
+            }
+            return num.toLocaleString();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        }
+
+        async function loadData(page = 1) {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const table = document.getElementById('channelTable');
+            const pagination = document.getElementById('pagination');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            table.style.display = 'none';
+            pagination.style.display = 'none';
+
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: currentLimit,
+                    sortBy: currentSortBy,
+                    order: currentOrder
+                });
+
+                if (currentKeyword) {
+                    params.append('keyword', currentKeyword);
+                }
+
+                const response = await fetch(`${API_BASE}/api/channels/list?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayStats(data.data.statistics);
+                    displayChannels(data.data.channels, data.data.pagination);
+                    displayPagination(data.data.pagination);
+
+                    loading.style.display = 'none';
+                    table.style.display = 'table';
+                    pagination.style.display = 'flex';
+                } else {
+                    throw new Error(data.message || '데이터를 불러오는데 실패했습니다.');
+                }
+
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = '오류: ' + err.message;
+            }
+        }
+
+        function displayStats(stats) {
+            document.getElementById('totalChannels').textContent = formatNumber(stats.totalChannels);
+            document.getElementById('totalSubscribers').textContent = formatNumber(stats.totalSubscribers);
+            document.getElementById('avgSubscribers').textContent = formatNumber(stats.avgSubscribers);
+            document.getElementById('totalVideos').textContent = formatNumber(stats.totalVideos);
+            document.getElementById('totalViews').textContent = formatNumber(stats.totalViews);
+        }
+
+        function displayChannels(channels, pagination) {
+            const tbody = document.getElementById('channelTableBody');
+            tbody.innerHTML = '';
+
+            channels.forEach((channel, index) => {
+                const row = document.createElement('tr');
+                row.setAttribute('draggable', 'true');
+                row.setAttribute('data-channel-id', channel.channelId);
+                row.setAttribute('data-priority', channel.priority || 999);
+
+                const priority = (pagination.page - 1) * pagination.limit + index + 1;
+
+                row.innerHTML = `
+                    <td><span class="drag-handle">☰</span></td>
+                    <td><span class="priority-badge">#${priority}</span></td>
+                    <td>
+                        <div class="channel-info">
+                            <img src="${channel.thumbnail || 'https://via.placeholder.com/50'}"
+                                 alt="${channel.channelName}"
+                                 class="channel-thumbnail"
+                                 onerror="this.src='https://via.placeholder.com/50'">
+                            <div>
+                                <div class="channel-name">${channel.channelName}</div>
+                                <a href="${channel.channelUrl}" target="_blank" class="channel-link">
+                                    채널 방문 →
+                                </a>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="number">${formatNumber(channel.subscriberCount)}</td>
+                    <td class="number">${formatNumber(channel.videoCount)}</td>
+                    <td class="number">${formatNumber(channel.viewCount)}</td>
+                    <td>${channel.searchKeyword || '-'}</td>
+                    <td>${formatDate(channel.createdAt)}</td>
+                    <td>
+                        <span class="status-badge status-${channel.status}">
+                            ${channel.status === 'collected' ? '수집됨' : channel.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="delete-btn" onclick="deleteChannel('${channel.channelId}', '${channel.channelName}')">삭제</button>
+                    </td>
+                `;
+
+                // 드래그 이벤트 리스너
+                row.addEventListener('dragstart', handleDragStart);
+                row.addEventListener('dragend', handleDragEnd);
+                row.addEventListener('dragover', handleDragOver);
+                row.addEventListener('drop', handleDrop);
+                row.addEventListener('dragleave', handleDragLeave);
+
+                tbody.appendChild(row);
+            });
+        }
+
+        // 드래그 앤 드롭 핸들러
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+
+            // 모든 행에서 drag-over 클래스 제거
+            document.querySelectorAll('tbody tr').forEach(row => {
+                row.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            if (draggedElement !== this) {
+                // 요소 위치 변경
+                const tbody = this.parentNode;
+                const allRows = Array.from(tbody.querySelectorAll('tr'));
+                const draggedIndex = allRows.indexOf(draggedElement);
+                const targetIndex = allRows.indexOf(this);
+
+                if (draggedIndex < targetIndex) {
+                    tbody.insertBefore(draggedElement, this.nextSibling);
+                } else {
+                    tbody.insertBefore(draggedElement, this);
+                }
+
+                // 순위 번호 업데이트
+                updatePriorityNumbers();
+
+                // 서버에 우선순위 저장
+                savePriorities();
+            }
+
+            return false;
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        // 순위 번호 업데이트
+        function updatePriorityNumbers() {
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach((row, index) => {
+                const badge = row.querySelector('.priority-badge');
+                badge.textContent = `#${index + 1}`;
+            });
+        }
+
+        // 우선순위 서버에 저장
+        async function savePriorities() {
+            const rows = document.querySelectorAll('tbody tr');
+            const priorities = Array.from(rows).map((row, index) => ({
+                channelId: row.getAttribute('data-channel-id'),
+                priority: index + 1
+            }));
+
+            try {
+                const response = await fetch(`${API_BASE}/api/channels/update-priority`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ priorities })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log('✅ 우선순위가 저장되었습니다.');
+                } else {
+                    console.error('❌ 우선순위 저장 실패:', result.error);
+                }
+            } catch (error) {
+                console.error('❌ 우선순위 저장 오류:', error);
+            }
+        }
+
+        function displayPagination(pagination) {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+
+            // 이전 버튼
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← 이전';
+            prevBtn.disabled = pagination.page === 1;
+            prevBtn.onclick = () => loadData(pagination.page - 1);
+            paginationDiv.appendChild(prevBtn);
+
+            // 페이지 번호들
+            const startPage = Math.max(1, pagination.page - 2);
+            const endPage = Math.min(pagination.totalPages, pagination.page + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.className = i === pagination.page ? 'active' : '';
+                pageBtn.onclick = () => loadData(i);
+                paginationDiv.appendChild(pageBtn);
+            }
+
+            // 다음 버튼
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '다음 →';
+            nextBtn.disabled = pagination.page === pagination.totalPages;
+            nextBtn.onclick = () => loadData(pagination.page + 1);
+            paginationDiv.appendChild(nextBtn);
+
+            currentPage = pagination.page;
+        }
+
+        function applyFilters() {
+            currentSortBy = document.getElementById('sortBy').value;
+            currentOrder = document.getElementById('order').value;
+            currentLimit = parseInt(document.getElementById('limit').value);
+            currentKeyword = document.getElementById('keyword').value.trim();
+            loadData(1);
+        }
+
+        // 채널 삭제 함수
+        async function deleteChannel(channelId, channelName) {
+            if (!confirm(`"${channelName}" 채널을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 채널과 관련된 모든 영상 데이터도 함께 삭제됩니다.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/channels/delete`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ channelId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ "${channelName}" 채널이 삭제되었습니다.`);
+                    loadData(currentPage); // 현재 페이지 새로고침
+                } else {
+                    alert(`❌ 삭제 실패: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`❌ 삭제 중 오류 발생: ${error.message}`);
+            }
+        }
+
+        // Enter 키로 검색
+        document.getElementById('keyword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+
+        // 페이지 로드시 데이터 불러오기
+        loadData();
+
+        // 5분마다 자동 새로고침
+        setInterval(() => {
+            loadData(currentPage);
+        }, 5 * 60 * 1000);
+    </script>
+    </div>
+</body>
+</html>
