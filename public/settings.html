@@ -643,28 +643,52 @@
 
         // 즉시 수집 시작
         async function collectNow() {
-            if (!confirm('자막 수집을 즉시 시작하시겠습니까?')) {
+            if (!confirm('자막 수집을 즉시 시작하시겠습니까?\n\n최대 5개 채널, 각 채널당 최근 10개 영상의 자막을 수집합니다.\n(약 1-2분 소요)')) {
                 return;
             }
 
-            showStatus('자막 수집을 시작합니다...', 'success');
+            showStatus('자막 수집 중... 잠시만 기다려주세요.', 'success');
 
-            // TODO: 서버 API 호출
-            setTimeout(() => {
-                showStatus('자막 수집이 시작되었습니다.', 'success');
-            }, 1000);
+            try {
+                const response = await fetch('/api/admin/trigger-collection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const summary = result.summary || result;
+                    let message = '✅ 자막 수집이 완료되었습니다!<br><br>';
+                    message += `<strong>📊 수집 결과:</strong><br>`;
+                    message += `• 처리된 채널: ${summary.channelsProcessed || 0}개<br>`;
+                    message += `• 수집된 영상: ${summary.totalVideos || 0}개<br>`;
+                    message += `• 수집된 자막: ${summary.subtitlesCollected || 0}개<br>`;
+                    message += `• 자막 없음: ${summary.noSubtitle || 0}개<br>`;
+                    message += `• 소요 시간: ${summary.duration ? summary.duration.toFixed(1) : 0}초`;
+
+                    showStatus(message, 'success');
+                } else {
+                    showStatus(`❌ 자막 수집 실패: ${result.error || '알 수 없는 오류'}`, 'error');
+                }
+            } catch (error) {
+                console.error('자막 수집 오류:', error);
+                showStatus(`❌ 자막 수집 중 오류가 발생했습니다: ${error.message}`, 'error');
+            }
         }
 
         // 상태 메시지 표시
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status-message');
-            statusDiv.textContent = message;
+            statusDiv.innerHTML = message;
             statusDiv.className = `status-message ${type}`;
             statusDiv.style.display = 'block';
 
             setTimeout(() => {
                 statusDiv.style.display = 'none';
-            }, 5000);
+            }, 8000);
         }
 
         // 페이지 로드시 설정 불러오기
