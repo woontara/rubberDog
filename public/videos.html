@@ -111,59 +111,67 @@
         }
 
         .video-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
             padding: 30px;
         }
 
         .video-card {
+            display: flex;
+            align-items: flex-start;
             background: white;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s;
+            padding: 15px;
+            gap: 15px;
         }
 
         .video-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
 
         .video-thumbnail {
-            width: 100%;
-            height: 180px;
+            width: 160px;
+            height: 90px;
+            min-width: 160px;
             object-fit: cover;
             background: #f0f0f0;
+            border-radius: 8px;
         }
 
         .video-content {
-            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .video-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             display: -webkit-box;
-            -webkit-line-clamp: 2;
+            -webkit-line-clamp: 1;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
         .video-channel {
-            font-size: 14px;
+            font-size: 13px;
             color: #667eea;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .video-meta {
             display: flex;
-            justify-content: space-between;
+            gap: 15px;
             font-size: 12px;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .subtitle-badge {
@@ -196,20 +204,21 @@
 
         .video-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 4px;
+            flex-wrap: wrap;
         }
 
         .btn-view {
-            flex: 1;
-            padding: 8px;
+            padding: 6px 12px;
             background: #667eea;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             transition: background 0.3s;
+            white-space: nowrap;
         }
 
         .btn-view:hover {
@@ -217,15 +226,15 @@
         }
 
         .btn-subtitle {
-            flex: 1;
-            padding: 8px;
+            padding: 6px 12px;
             background: #28a745;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             transition: background 0.3s;
+            white-space: nowrap;
         }
 
         .btn-subtitle:hover {
@@ -238,16 +247,16 @@
         }
 
         .btn-analyze {
-            flex: 1;
-            padding: 8px;
+            padding: 6px 12px;
             background: #ffc107;
             color: #333;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             transition: background 0.3s;
+            white-space: nowrap;
         }
 
         .btn-analyze:hover {
@@ -261,16 +270,16 @@
         }
 
         .btn-delete {
-            flex: 1;
-            padding: 8px;
+            padding: 6px 12px;
             background: #dc3545;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             transition: background 0.3s;
+            white-space: nowrap;
         }
 
         .btn-delete:hover {
@@ -447,6 +456,30 @@
             }
             .sidebar.active {
                 transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .video-card {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .video-thumbnail {
+                width: 100%;
+                height: auto;
+                min-width: unset;
+                aspect-ratio: 16/9;
+            }
+
+            .video-actions {
+                flex-wrap: wrap;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
