@@ -113,47 +113,49 @@
         .video-grid {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            padding: 30px;
+            gap: 8px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .video-card {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             background: white;
-            border-radius: 10px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             transition: box-shadow 0.3s;
-            padding: 15px;
-            gap: 15px;
+            padding: 10px;
+            gap: 12px;
         }
 
         .video-card:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }
 
         .video-thumbnail {
-            width: 160px;
-            height: 90px;
-            min-width: 160px;
+            width: 120px;
+            height: 68px;
+            min-width: 120px;
             object-fit: cover;
             background: #f0f0f0;
-            border-radius: 8px;
+            border-radius: 4px;
         }
 
         .video-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 4px;
+            min-width: 0;
         }
 
         .video-title {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 4px;
             display: -webkit-box;
             -webkit-line-clamp: 1;
             -webkit-box-orient: vertical;
@@ -161,24 +163,22 @@
         }
 
         .video-channel {
-            font-size: 13px;
+            font-size: 12px;
             color: #667eea;
-            margin-bottom: 4px;
         }
 
         .video-meta {
             display: flex;
-            gap: 15px;
-            font-size: 12px;
+            gap: 10px;
+            font-size: 11px;
             color: #666;
-            margin-bottom: 8px;
         }
 
         .subtitle-badge {
             display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: 600;
         }
 
@@ -204,19 +204,18 @@
 
         .video-actions {
             display: flex;
-            gap: 8px;
-            margin-top: 4px;
+            gap: 6px;
             flex-wrap: wrap;
         }
 
         .btn-view {
-            padding: 6px 12px;
+            padding: 4px 10px;
             background: #667eea;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             transition: background 0.3s;
             white-space: nowrap;
         }
@@ -226,13 +225,13 @@
         }
 
         .btn-subtitle {
-            padding: 6px 12px;
+            padding: 4px 10px;
             background: #28a745;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             transition: background 0.3s;
             white-space: nowrap;
         }
@@ -247,13 +246,13 @@
         }
 
         .btn-analyze {
-            padding: 6px 12px;
+            padding: 4px 10px;
             background: #ffc107;
             color: #333;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             transition: background 0.3s;
             white-space: nowrap;
@@ -270,13 +269,13 @@
         }
 
         .btn-delete {
-            padding: 6px 12px;
+            padding: 4px 10px;
             background: #dc3545;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             transition: background 0.3s;
             white-space: nowrap;
