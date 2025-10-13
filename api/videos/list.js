@@ -66,11 +66,11 @@ module.exports = async (req, res) => {
       filter.subtitleStatus = subtitleStatus;
     }
 
-    // 기본적으로 자막 없는 영상 제외 (명시적으로 포함하지 않는 한)
+    // 기본적으로 자막 없는 영상과 수집 실패한 영상 제외
     // subtitleStatus 필터가 없고, hasSubtitle 필터도 없을 때만 적용
     const excludeNoSubtitle = req.query.excludeNoSubtitle !== 'false';
     if (excludeNoSubtitle && !subtitleStatus && !hasSubtitle) {
-      filter.subtitleStatus = { $ne: 'no_subtitle' };
+      filter.subtitleStatus = { $nin: ['no_subtitle', 'failed'] };
     }
 
     if (keyword) {
