@@ -49,6 +49,23 @@ class VideoCollector {
   }
 
   /**
+   * ISO 8601 duration을 초 단위로 변환
+   * 예: PT1M30S -> 90, PT30S -> 30, PT1H5M -> 3900
+   */
+  parseDurationToSeconds(duration) {
+    if (!duration) return 0;
+
+    const matches = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!matches) return 0;
+
+    const hours = parseInt(matches[1] || 0);
+    const minutes = parseInt(matches[2] || 0);
+    const seconds = parseInt(matches[3] || 0);
+
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  /**
    * 현재 API 키 가져오기
    */
   getCurrentApiKey() {
@@ -169,7 +186,21 @@ class VideoCollector {
 
       if (!videoData.items) return [];
 
-      return videoData.items.map(video => ({
+      // SHORTS 영상 필터링 (60초 이하 제외)
+      const filteredVideos = videoData.items.filter(video => {
+        const duration = video.contentDetails.duration || '';
+        const seconds = this.parseDurationToSeconds(duration);
+
+        // 60초 이하는 SHORTS로 간주하여 제외
+        if (seconds > 0 && seconds <= 60) {
+          console.log(`⏭️ SHORTS 영상 제외: ${video.snippet.title} (${seconds}초)`);
+          return false;
+        }
+
+        return true;
+      });
+
+      return filteredVideos.map(video => ({
         videoId: video.id,
         channelId: channelId,
         channelName: channelName,

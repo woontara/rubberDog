@@ -468,6 +468,14 @@
                         수집 시작
                     </button>
                 </div>
+
+                <div class="setting-item">
+                    <label>SHORTS 영상 삭제</label>
+                    <div class="description" style="margin-bottom: 10px;">60초 이하의 SHORTS 영상을 모두 삭제합니다. (앞으로 수집도 자동 제외됩니다)</div>
+                    <button class="btn btn-danger" onclick="deleteShorts()">
+                        ⏭️ SHORTS 영상 삭제
+                    </button>
+                </div>
             </div>
 
             <!-- 저장 버튼 -->
@@ -676,6 +684,45 @@
             } catch (error) {
                 console.error('자막 수집 오류:', error);
                 showStatus(`❌ 자막 수집 중 오류가 발생했습니다: ${error.message}`, 'error');
+            }
+        }
+
+        // SHORTS 영상 삭제
+        async function deleteShorts() {
+            if (!confirm('60초 이하의 SHORTS 영상을 모두 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없으며, 앞으로도 SHORTS는 자동으로 제외됩니다.')) {
+                return;
+            }
+
+            try {
+                showStatus('🔍 SHORTS 영상 검색 중...', 'info');
+
+                const response = await fetch('/api/videos/delete-shorts', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    let message = `✅ ${result.deletedCount}개의 SHORTS 영상이 삭제되었습니다.`;
+
+                    if (result.deletedSamples && result.deletedSamples.length > 0) {
+                        message += '\n\n삭제된 영상 예시:\n';
+                        result.deletedSamples.slice(0, 5).forEach(v => {
+                            message += `\n- ${v.title} (${v.seconds}초)`;
+                        });
+                    }
+
+                    alert(message);
+                    showStatus(`✅ ${result.deletedCount}개의 SHORTS 영상이 삭제되었습니다.`, 'success');
+                } else {
+                    showStatus(`❌ SHORTS 삭제 실패: ${result.error || '알 수 없는 오류'}`, 'error');
+                }
+            } catch (error) {
+                console.error('SHORTS 삭제 오류:', error);
+                showStatus(`❌ SHORTS 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
             }
         }
 
