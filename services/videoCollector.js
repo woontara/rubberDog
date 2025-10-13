@@ -235,8 +235,14 @@ class VideoCollector {
     try {
       console.log(`📝 자막 수집 시작: ${videoId}`);
 
-      // 로컬 하이브리드 자막 API 호출
-      const apiUrl = `http://localhost:3001/api/youtube/subtitle`;
+      // 환경에 따라 API URL 결정
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : (process.env.NODE_ENV === 'production' && process.env.PRODUCTION_URL)
+        ? process.env.PRODUCTION_URL
+        : 'http://localhost:3001';
+
+      const apiUrl = `${baseUrl}/api/youtube/subtitle`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -347,6 +353,109 @@ class VideoCollector {
   /**
    * 메인 수집 실행 함수
    */
+  /**
+   * 특정 채널의 영상 및 자막 수집
+   */
+  async collectVideosFromChannel(channelId, options = {}) {
+    const { maxResults = 10 } = options;
+
+    console.log(`\n🎬 채널 영상/자막 수집 시작: ${channelId}`);
+
+    const results = {
+      totalVideos: 0,
+      newVideos: 0,
+      updatedVideos: 0,
+      subtitlesCollected: 0,
+      noSubtitle: 0,
+      subtitlesFailed: 0
+    };
+
+    try {
+      // 1. 채널 정보 가져오기
+      const channel = await Channel.findOne({ channelId });
+      if (!channel) {
+        throw new Error('채널을 찾을 수 없습니다');
+      }
+
+      console.log(`📺 채널: ${channel.channelName}`);
+
+      // 2. 최근 영상 목록 가져오기
+      const params = {
+        part: 'snippet',
+        channelId: channelId,
+        type: 'video',
+        order: 'date',
+        maxResults: Math.min(maxResults, 50)
+      };
+
+      const searchData = await this.callYouTubeAPI('search', params);
+
+      if (!searchData.items || searchData.items.length === 0) {
+        console.log('📭 수집할 영상이 없습니다');
+        return results;
+      }
+
+      // 3. 영상 ID 목록 추출
+      const videoIds = searchData.items.map(item => item.id.videoId);
+      console.log(`📋 발견된 영상: ${videoIds.length}개`);
+
+      // 4. 영상 상세 정보 조회 및 저장
+      const videosDetail = await this.getVideosDetails(videoIds, channelId, channel.channelName);
+
+      for (const videoData of videosDetail) {
+        const saveResult = await this.saveVideo(videoData);
+
+        if (saveResult.saved) {
+          results.newVideos++;
+        } else if (saveResult.updated) {
+          results.updatedVideos++;
+        }
+
+        results.totalVideos++;
+
+        // 5. 자막 수집 시도
+        const video = saveResult.video;
+        if (video.subtitleStatus === 'pending') {
+          console.log(`📝 자막 수집 시도: ${video.title.substring(0, 30)}...`);
+
+          const subtitleResult = await this.collectSubtitle(video.videoId);
+
+          if (subtitleResult.success) {
+            video.hasSubtitle = true;
+            video.subtitleStatus = 'collected';
+            video.subtitleText = subtitleResult.subtitle;
+            video.subtitleLanguage = subtitleResult.language;
+            await video.save();
+
+            results.subtitlesCollected++;
+            console.log(`  ✅ 자막 수집 성공`);
+          } else {
+            video.subtitleStatus = subtitleResult.error === 'NO_SUBTITLE' ? 'no_subtitle' : 'failed';
+            await video.save();
+
+            if (subtitleResult.error === 'NO_SUBTITLE') {
+              results.noSubtitle++;
+            } else {
+              results.subtitlesFailed++;
+            }
+            console.log(`  ❌ ${subtitleResult.error}`);
+          }
+
+          // 자막 수집 간 딜레이
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      console.log(`✅ 채널 처리 완료: 영상 ${results.totalVideos}개, 자막 ${results.subtitlesCollected}개\n`);
+
+      return results;
+
+    } catch (error) {
+      console.error(`❌ 채널 처리 실패:`, error.message);
+      throw error;
+    }
+  }
+
   async collectVideosAndSubtitles(channelLimit = 5, videosPerChannel = null) {
     console.log(`\n🚀 영상 및 자막 수집 시작`);
     console.log(`📅 시작 시각: ${new Date().toLocaleString('ko-KR')}`);
