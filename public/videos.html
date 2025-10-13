@@ -260,6 +260,23 @@
             color: #666;
         }
 
+        .btn-delete {
+            flex: 1;
+            padding: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
         .pagination {
             padding: 30px;
             display: flex;
@@ -682,6 +699,9 @@
                                     onclick="analyzeSubtitle('${video.videoId}', '${video.title}')">
                                 자막 분석
                             </button>
+                            <button class="btn-delete" onclick="deleteVideo('${video.videoId}', '${video.title.replace(/'/g, "\\'")}')">
+                                🗑️ 삭제
+                            </button>
                         </div>
                     </div>
                 `;
@@ -898,6 +918,35 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // 영상 삭제
+        async function deleteVideo(videoId, videoTitle) {
+            if (!confirm(`"${videoTitle}" 영상을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/videos/delete`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ videoId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ 영상이 삭제되었습니다.');
+                    loadData(currentPage);  // 현재 페이지 새로고침
+                } else {
+                    alert(`❌ 삭제 실패: ${result.error || '알 수 없는 오류'}`);
+                }
+            } catch (error) {
+                console.error('영상 삭제 오류:', error);
+                alert(`❌ 삭제 중 오류가 발생했습니다: ${error.message}`);
+            }
         }
 
         function applyFilters() {
