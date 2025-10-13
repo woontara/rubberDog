@@ -45,16 +45,10 @@ module.exports = async (req, res) => {
     const Channel = require('../../models/Channel');
     const collector = new VideoCollector();
 
-    // 수집된 모든 채널 가져오기 (자막 없는 채널 제외, 우선순위 순)
-    const channels = await Channel.find({
-      status: 'collected',
-      $or: [
-        { 'subtitleStats.hasAnySubtitles': null },  // 아직 확인 안된 채널
-        { 'subtitleStats.hasAnySubtitles': true }   // 자막 있는 채널
-      ]
-    })
-      .sort({ priority: 1, subscriberCount: -1 })
-      .limit(10)  // 수동 실행은 10개 채널로 제한
+    // 채널 목록에서 우선순위 높은 채널 가져오기
+    const channels = await Channel.find({})
+      .sort({ priority: 1, subscriberCount: -1 })  // 우선순위 낮은 숫자부터, 그 다음 구독자 많은 순
+      .limit(10)  // 수동 실행은 최대 10개 채널로 제한
       .lean();
 
     console.log(`📋 총 ${channels.length}개 채널에서 영상 및 자막 수집 시작`);
